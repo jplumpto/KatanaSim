@@ -5,7 +5,7 @@
 //Constructor opens communication, serial in this format
 ArduinoCom::ArduinoCom(char* commport, int baudrate)
 {
-	commclose();
+	//commclose();
 
 	strncpy_s(m_sCommport,80,commport,80);
 	m_iBaudrate = baudrate;
@@ -15,9 +15,13 @@ ArduinoCom::ArduinoCom(char* commport, int baudrate)
 	m_hArduino = INVALID_HANDLE_VALUE;
 	m_bStop = TRUE;
 
+	_nStateSize = sizeof(ArduinoStates);
+
 	commopen();
 
-	_buffer = (UINT8*)malloc(2*sizeof(struct ArduinoStates));
+	//_buffer = (UINT8*)malloc(2*sizeof(struct ArduinoStates));
+	_buffer = new ArduinoStates();
+
 } //Constructor
 
 //Destructor closes handle
@@ -25,7 +29,8 @@ ArduinoCom::~ArduinoCom()
 {
 	cancel_update_cmd();
 	commclose();
-	free(_buffer);
+	//free(_buffer);
+	delete _buffer;
 
 }  //Destructor
 
@@ -66,27 +71,107 @@ void ArduinoCom::SendState(int updatingState, int value)
 } //SendState
 
 //Updates the structure with the latest data, if buffer is complete
-bool ArduinoCom::LatestStates(ArduinoStates* currentState)
+bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 {
-	DWORD nbChar = sizeof(ArduinoStates);
-	DWORD nbRead = 0;
-	UINT8* tempPtr = _buffer + _bytesRead;
+	DWORD nBytesRead  = 0;
+	DWORD nUINT16Size = sizeof(UINT16);
 
-	// Read up to 2 times intended struct size, ensuring that struct
+	UINT8 *tmpPtr = NULL;
+
+	UINT16 lpBuf = 0xBAD;
+
+	ArduinoStates tempState;
+
+	bool bAligned = false;
+
+	if (_nStateSize == commread((UINT8 *)&tempState, _nStateSize))
+	{
+		if ((tempState.startVar == 0xAAA) && (tempState.endVar))
+		{
+			bAligned = true;
+
+			memcpy (currentState, &tempState, _nStateSize);
+
+		}  // if
+		else
+		{
+			// try to get aligned
+			while (!bAligned)
+			{
+				if (nUINT16Size != commread (&lpBuf, nUINT16Size))
+				{
+					break;
+
+				}  // if
+
+				if (lpBuf == 0xAAA)
+				{
+					bAligned = true;
+
+				}  // if
+
+			}  // while
+
+		}  // else
+
+	}  // if
+
+	return bAligned;
+
+	//while (!bAligned)
+	//{
+	//	if (nUINT16Size == commread((UINT8 *)&tempState, nUINT16Size))
+	//	{
+	//		if (tempState.startVar == 0xAAA)
+	//		{
+	//			tmpPtr = ((UINT8*)&tempState ) + nUINT16Size;
+
+	//			nBytesRead = commread(tmpPtr, _nStateSize - nUINT16Size);
+
+	//			if (tempState.endVar == 0xFFF)
+	//			{
+	//				memcpy(currentState, &tempState, _nStateSize);
+
+	//				bAligned = true;
+
+	//			}  // if
+
+	//			return bAligned;
+
+	//		}  // if
+
+	//	}  // if
+
+	//}  // while
+
+	//if (_nStateSize == commread((UINT8*)&tempState, _nStateSize))
+	//{
+	//	memcpy(currentState, &tempState, _nStateSize);
+
+	//}  // if
+	//else
+	//{
+	//	bAligned = false;
+
+	//}  // else
+
+	//return bAligned;
+
+	// Read bytes missing from full struct size, ensuring that struct
 	// should fit in the buffer
-	nbRead = commread(tempPtr,nbChar - _startRead); 
+	nBytesRead = commread(tmpPtr,_nStateSize - _startRead); 
 
 	//Add # bytes read to bytes already in buffer
-	_bytesRead += nbRead;  
+	_bytesRead += nBytesRead;  
 
 	//check if buffer is full
-	if (_bytesRead >= nbChar) 
+	if (_bytesRead >= _nStateSize) 
 	{
 		//Find location of 0xAAA in buffer
 		UINT8* stPtr = NULL;
 
 		//Find location of StartVariable
-		int startPosition = find_start(stPtr,_buffer,nbChar);
+		int startPosition = find_start(stPtr, (UINT8 *)_buffer,_nStateSize);
 		if (startPosition == -1)
 		{
 			//Reset buffer size
@@ -96,7 +181,7 @@ bool ArduinoCom::LatestStates(ArduinoStates* currentState)
 		}
 
 		//Ensure sufficient bytes have been read
-		if (_bytesRead - startPosition < nbChar)
+		if (_bytesRead - startPosition < _nStateSize)
 		{
 			_startRead = startPosition;
 			return FALSE;
@@ -107,13 +192,13 @@ bool ArduinoCom::LatestStates(ArduinoStates* currentState)
 		_startRead = 0;
 
 		//Check that test variables matches
-		if ((currentState->startVar != 0xAAA) || (currentState->endVar != 0xFFF))
+		if ((_buffer->startVar != 0xAAA) || (_buffer->endVar != 0xFFF))
 		{
 			return FALSE;
 		}
 
 		//Copy buffer values to global structure
-		memcpy(currentState,_buffer + startPosition,nbChar);
+		memcpy(currentState,_buffer + startPosition,_nStateSize);
 
 		//Buffer is full and data is properly aligned
 		return TRUE;
@@ -123,7 +208,7 @@ bool ArduinoCom::LatestStates(ArduinoStates* currentState)
 	return FALSE;
 
 
-} //LatestStates
+} //RecvCurrentState
 
 
 
@@ -177,7 +262,7 @@ bool ArduinoCom::cancel_update_cmd()
 	if(commwrite(sBuf, static_cast<DWORD>(strlen(sBuf))) == 0)
 		return FALSE;
 
-	Sleep(10);
+	Sleep(20);
 	commflush();
 
 	// Event has occurred.
@@ -250,6 +335,7 @@ void ArduinoCom::commopen() {
 		{
 			int n;
 			LPSTR lpMsgBuf;
+			char lpErrorBuf[1024];
 
 			FormatMessage( 
 				FORMAT_MESSAGE_ALLOCATE_BUFFER | 
@@ -265,12 +351,13 @@ void ArduinoCom::commopen() {
 			for (n=0;lpMsgBuf[n]!=0;n++)
 			{
 				if (lpMsgBuf[n]=='\n' || lpMsgBuf[n]=='\r' )
-					printf("\rError %d: %s\n", retval, lpMsgBuf);
+				{
+					sprintf_s(lpErrorBuf,1024,"\rError %d: %s\n", retval, lpMsgBuf);
+					XPLMDebugString(lpErrorBuf);
+				}
 			}
 
 			LocalFree( lpMsgBuf );		
-
-			Sleep(ARDUINO_WAIT_TIME);  //Arduino has boot up time
 
 			return;
 

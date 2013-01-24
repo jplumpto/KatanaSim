@@ -121,7 +121,8 @@ PLUGIN_API void XPluginDisable(void)
 	_parkBrake = NULL;
 
 	XPLMUnregisterFlightLoopCallback(ArduinoFlightLoopCallback, NULL);
-	_arduino->~ArduinoCom();
+	delete _arduino;
+	_arduino = NULL;
 
 }
 
@@ -141,14 +142,14 @@ PLUGIN_API int XPluginEnable(void)
 	configFile = new XmlConfig();
 	configFile->Open(filename);
 
-	ArduinoDataRefs();
-	InitializeStateMemory();
-
 	_arduino = new ArduinoCom(configFile->ArduinoPort,9600);
 	if(!_arduino->IsOpen())
 	{
 		return -1;
 	}
+
+	ArduinoDataRefs();
+	InitializeStateMemory();
 
 	// enable arduino flight loop
 	XPLMRegisterFlightLoopCallback(		
@@ -257,7 +258,7 @@ float	ArduinoFlightLoopCallback(
 	}
 
 	//Read bytes from Arduino
-	if ( _arduino->LatestStates(&currentState) )
+	if ( _arduino->RecvCurrentState(&currentState) )
 	{
 		//If buffer was properly filled, update states
 		UpdateStates();

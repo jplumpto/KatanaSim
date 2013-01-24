@@ -89,7 +89,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine=""
+				CommandLine="copy /Y &quot;$(OutDir)\$(ProjectName).xpl&quot; &quot;D:\X-Plane 9\Resources\plugins&quot;"
 			/>
 		</Configuration>
 		<Configuration

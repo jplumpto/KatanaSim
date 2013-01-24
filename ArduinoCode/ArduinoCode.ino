@@ -5,16 +5,15 @@
  For calibration, sends string of control inputs.
  For xplaneplugin, sends bytes of all states. 
  
- Updated: November 30, 2012
+ Updated: January 24, 2013
  
  */
 #include <Wire.h>
 #include <string.h>
 
 String currCmd = "\0";
-String updateDate = "November 30, 2012";
+String updateDate = "January 24, 2013";
 int  updateXplane = 0;
-int startTime;
 int delayLength = 0;
 
 /*    Pin locations     */
@@ -72,6 +71,8 @@ unsigned long nbCali = 0;
 struct ArduinoStates {
   //Test Variable for alignment
   uint16_t startVar;
+  uint16_t packetCount;
+  unsigned long elapsedTime;
   
   //controls
   uint16_t throttle;
@@ -142,6 +143,7 @@ void loop() {
         send_calibration();
       }else if (action == "U") //X-Plane Initiate Update Request
       {
+        states->packetCount = 0;
         updateXplane = 1;
         delayLength = 0;
         if( currCmd[1] == ':' )
@@ -202,13 +204,12 @@ void loop() {
       currCmd = "\0";
     }
     
-  } 
+  } //if serial available 
   
   if (updateXplane == 1){
     //Send current states
     send_states();
-    delay(delayLength);
-    Serial.println("DELAY");
+    //delay(delayLength);
   }
   
 }
@@ -219,6 +220,9 @@ void send_states()
   update_controls();
   update_starter();
   update_switches();
+  
+  states->elapsedTime = millis();
+  states->packetCount++;
   
   Serial.write((uint8_t*)states,nbChar);
 }
@@ -279,8 +283,10 @@ void send_test_data()
   update_controls();
   update_starter();
   update_switches();
+  states->elapsedTime = millis();
+
   //Var1:value;Var2:value;Var3:value...
-  snprintf( output, 256, "startVar:%d",states->startVar);
+  snprintf( output, 256, "startVar:%d;ElapsedTime:%lu",states->startVar,states->elapsedTime);
   Serial.println( output );
   snprintf( output, 256, "PI:%d;RL:%d;YW:%d;TH:%d;LB:%d;RB:%d;ES:%d;CH:%d;CK:%d;PB:%d;",states->pitch,states->roll,states->yaw,states->throttle,states->lBrake,states->rBrake,states->propSpeed,states->carbHeat,states->choke,states->pBrake );
   Serial.println( output );
@@ -353,6 +359,9 @@ void * create_state(){
   if (states)
   {
       states->startVar = 0xAAA;
+      states->packetCount = 0;
+      states->elapsedTime = 0;
+      
       states->throttle = 0;
       states->propSpeed = 0; 
       states->pitch = 0;

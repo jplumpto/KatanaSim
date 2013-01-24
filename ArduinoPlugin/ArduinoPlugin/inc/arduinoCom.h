@@ -4,6 +4,8 @@
 #ifndef _ARDUINO_COM_H_
 #define _ARDUINO_COM_H_
 
+//X-Plane debug
+#include "XPLM/XPLMUtilities.h"
 
 //Arduino Includes
 #include <stdio.h>
@@ -27,6 +29,8 @@
 struct ArduinoStates {
 	//Test Variable to Ensure alignment of data
 	UINT16 startVar;
+	//UINT16 packetCount;
+	//unsigned long   elapsedTime;
 
 	//Controls
 	UINT16 throttle;
@@ -58,7 +62,7 @@ struct ArduinoStates {
 
 	//Test Variable to Ensure alignment of data
 	UINT16 endVar;
-}; //struct ArduinoState
+}; //struct ArduinoStates
 
 
 
@@ -71,7 +75,7 @@ public:
 	bool IsOpen() {return m_bCommOpened;} //Returns whether or not communication port is open
 	bool Initiate();  //Sends command to Arduino to start sending packets
 	void SendState(int updatingState, int value);  //For updating things such as Trim or Flaps display
-	bool LatestStates(struct ArduinoStates* currentState);  //Updates the structure with the latest data
+	bool RecvCurrentState(struct ArduinoStates* currentState);  //Updates the structure with the latest data
 	//And so on as required...
 
 private:
@@ -84,9 +88,10 @@ private:
 	int				m_iBaudrate;
 
 	//Serial Read Variables
-	UINT8*			_buffer;
+	ArduinoStates*	_buffer;
 	DWORD			_bytesRead;
 	int				_startRead;
+	DWORD			_nStateSize;
 
 
 	//--------------Serial Stuff-----------------
