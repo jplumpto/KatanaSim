@@ -95,10 +95,16 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 		}  // if
 		else
 		{
-			// try to get aligned
-			while (!bAligned)
+			if (!bAligned)
 			{
-				if (nUINT16Size != commread (&lpBuf, nUINT16Size))
+				commflush();
+
+			}  // if
+
+			// try to get aligned
+			//while (!bAligned)
+			//{
+				if (nUINT16Size != commread ((UINT8*)&lpBuf, nUINT16Size))
 				{
 					break;
 
@@ -106,11 +112,24 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 
 				if (lpBuf == 0xAAA)
 				{
-					bAligned = true;
+					//bAligned = true; //Still need to read full structure
+					
+					if (_nStateSize - nUINT16Size == commread(((UINT8*)currentState) + nUINT16Size, _nStateSize - nUINT16Size))
+					{
+						bAligned = true;
+
+						if (currentState->batteryState == 1)
+						{
+							static int j = 0;
+							j++;
+
+						}  // if
+
+					} // if
 
 				}  // if
 
-			}  // while
+			//}  // while
 
 		}  // else
 
@@ -118,6 +137,7 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 
 	return bAligned;
 
+	#pragma region CommentedRegion
 	//while (!bAligned)
 	//{
 	//	if (nUINT16Size == commread((UINT8 *)&tempState, nUINT16Size))
@@ -156,6 +176,8 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 	//}  // else
 
 	//return bAligned;
+
+	/*
 
 	// Read bytes missing from full struct size, ensuring that struct
 	// should fit in the buffer
@@ -207,6 +229,9 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 	//Buffer is not full yet
 	return FALSE;
 
+	*/
+
+	#pragma endregion
 
 } //RecvCurrentState
 

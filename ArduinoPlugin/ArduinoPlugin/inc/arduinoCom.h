@@ -29,8 +29,8 @@
 struct ArduinoStates {
 	//Test Variable to Ensure alignment of data
 	UINT16 startVar;
-	//UINT16 packetCount;
-	//unsigned long   elapsedTime;
+	UINT16 packetCount;
+	unsigned long   elapsedTime;
 
 	//Controls
 	UINT16 throttle;

@@ -10,6 +10,13 @@ const float MAX_TRIM_DEFLECTION = 0.5f;
 const float MIN_TRIM_DEFLECTION = -0.5f;
 const float MAX_AIRSPEED = 120.0f;
 
+//X-Plane Debugging Window
+static XPLMWindowID	gWindow = NULL;
+static char gTempBuffer[256];
+static float PreviousElapsedTimeSinceLastFlightLoop = 0;
+static float	TargetFrequency = 10.0f;
+static float	TargetPeriod = 1.0f / TargetFrequency;
+
 //Arduino Communications
 ArduinoCom	*_arduino	= NULL;
 bool		_updating	= FALSE;
@@ -124,6 +131,9 @@ PLUGIN_API void XPluginDisable(void)
 	delete _arduino;
 	_arduino = NULL;
 
+
+	//Debugging 
+	XPLMDestroyWindow(gWindow);
 }
 
 
@@ -157,6 +167,15 @@ PLUGIN_API int XPluginEnable(void)
 		1.0f/200.0f,									/* Interval */
 		NULL);										/* refcon not used. */
 
+
+	// Debugging display window
+	gWindow = XPLMCreateWindow(
+		50, 600, 400, 500,			/* Area of the window. */
+		1,							/* Start visible. */
+		MyDrawWindowCallback,		/* Callbacks */
+		MyHandleKeyCallback,
+		MyHandleMouseClickCallback,
+		NULL);						/* Refcon - not used. */
 	return 1;
 }
 
@@ -230,6 +249,42 @@ PLUGIN_API void XPluginReceiveMessage(
 
 }
 
+#pragma region DebuggerTextWindow
+/*
+				Function to print messages to screen (Useful for debugging)
+*/
+void MyDrawWindowCallback(
+						  XPLMWindowID		 inWindowID,	
+						  void *			   inRefcon)
+{
+	int		left, top, right, bottom;
+	float	color[] = { 1.0, 1.0, 1.0 };	 /* RGB White */
+
+	XPLMGetWindowGeometry(inWindowID, &left, &top, &right, &bottom);
+	XPLMDrawTranslucentDarkBox(left, top, right, bottom);
+	XPLMDrawString(color, left + 5, top - 20, gTempBuffer, NULL, xplmFont_Basic);
+}
+
+void MyHandleKeyCallback(
+						 XPLMWindowID		 inWindowID,	
+						 char				 inKey,	
+						 XPLMKeyFlags		 inFlags,	
+						 char				 inVirtualKey,	
+						 void *			   inRefcon,	
+						 int				  losingFocus)
+{
+}								  
+
+int MyHandleMouseClickCallback(
+							   XPLMWindowID		 inWindowID,	
+							   int				  x,	
+							   int				  y,	
+							   XPLMMouseStatus	  inMouse,	
+							   void *			   inRefcon)
+{
+	return 1;
+}
+#pragma endregion
 
 /**
 \param inElapsedSinceLastCall Time (sec) since last call (dt).
@@ -257,9 +312,25 @@ float	ArduinoFlightLoopCallback(
 		}
 	}
 
+	//Update x-plane update frequency
+	float ElapsedTimeDifference = (inElapsedTimeSinceLastFlightLoop - PreviousElapsedTimeSinceLastFlightLoop);
+	float UpdateFrequency = (1.0f / ElapsedTimeDifference);
+	sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f",UpdateFrequency);
+	PreviousElapsedTimeSinceLastFlightLoop = inElapsedTimeSinceLastFlightLoop;
+
 	//Read bytes from Arduino
 	if ( _arduino->RecvCurrentState(&currentState) )
 	{
+		unsigned long nDeltaTimeArduino = currentState.elapsedTime - lastState.elapsedTime;
+		UINT16 nDeltaPackets = currentState.packetCount - lastState.packetCount;
+		
+		lastState.elapsedTime = currentState.elapsedTime;
+		lastState.packetCount = currentState.packetCount;
+
+		//Update x-plane update frequency
+		float ArduinoFreq = (1000.0f * nDeltaPackets / nDeltaTimeArduino); // = #packets/deltaTime(ms) * 1000 ms / 1 s = Hz
+		sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, Packet = %d, Arduino Hz = %0.2f\n", UpdateFrequency, currentState.packetCount, ArduinoFreq);
+		
 		//If buffer was properly filled, update states
 		UpdateStates();
 	}
@@ -277,7 +348,7 @@ void UpdateStates()
 	update_buttons();
 
 	//Every X cycles, update fan speed
-	if (XPLMGetCycleNumber() % 500 == 0)
+	if (XPLMGetCycleNumber() % 5000 == 0)
 	{
 		update_fan_speed();
 	}

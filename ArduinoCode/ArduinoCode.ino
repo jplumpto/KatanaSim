@@ -5,66 +5,11 @@
  For calibration, sends string of control inputs.
  For xplaneplugin, sends bytes of all states. 
  
- Updated: January 24, 2013
+ Updated: January 29, 2013
  
  */
 #include <Wire.h>
 #include <string.h>
-
-String currCmd = "\0";
-String updateDate = "January 24, 2013";
-int  updateXplane = 0;
-int delayLength = 0;
-
-/*    Pin locations     */
-//Controls
-const int pitchPin = A0;   //Cable 1
-const int rollPin = A1;    //Cable 2
-const int yawPin = A2;     //Cable 3
-const int pBrakePin = A3;
-const int propSpeedPin = A4;
-const int chokePin = A5;
-const int throttlePin = A6;
-const int carbHeatPin = A7;
-const int lBrakePin = A8;
-const int rBrakePin = A9;
-
-
-//Digital Pins
-const int fanPin = 13;
-const int trimTabPin = 14;
-
-const int starterPin = 2;
-const int leftMagPin = 53;
-const int rightMagPin = 52;
-const int fuelPin = 44;
-const int strobePin = 45;
-const int landingPin = 46;
-const int taxiPin = 47;
-const int positionPin = 48;
-const int avMasterPin = 49;
-const int generatorPin = 50;
-const int batteryPin = 51;
-const int trimUpPin = 3;
-const int trimDownPin = 4;
-
-
-void * create_state();
-void update_controls();
-void update_switches();
-void update_starter();
-void send_state();
-void send_calibration();
-void send_test_data();
-void update_fan_speed(char *buff);
-void update_trim_display(char *buff);
-void update_stall_warning(char *buff);
-
-struct ArduinoStates * states = NULL;
-int hitloop = 0;
-unsigned long nbChar = 0;
-unsigned long nbCali = 0;
-
 
 //Structure should match structure on computer end
 #pragma pack(1)
@@ -104,7 +49,62 @@ struct ArduinoStates {
   
   //Test Variable for alignment
   uint16_t endVar;
-};
+}; //ArduinoStates structure
+
+String currCmd = "\0";
+String updateDate = "January 29, 2013";
+int  updateXplane = 0;
+int delayLength = 0;
+unsigned long lastTime = 0;
+
+ArduinoStates * states = NULL;
+int hitloop = 0;
+unsigned long nbChar = 0;
+unsigned long nbCali = 0;
+
+/*    Pin locations     */
+//Controls
+const int pitchPin = A0;   //Cable 1
+const int rollPin = A1;    //Cable 2
+const int yawPin = A2;     //Cable 3
+const int pBrakePin = A3;
+const int propSpeedPin = A4;
+const int chokePin = A5;
+const int throttlePin = A6;
+const int carbHeatPin = A7;
+const int lBrakePin = A8;
+const int rBrakePin = A9;
+
+//Digital Pins
+const int fanPin = 13;
+const int trimTabPin = 14;
+
+const int starterPin = 2;
+const int leftMagPin = 53;
+const int rightMagPin = 52;
+const int fuelPin = 44;
+const int strobePin = 45;
+const int landingPin = 46;
+const int taxiPin = 47;
+const int positionPin = 48;
+const int avMasterPin = 49;
+const int generatorPin = 50;
+const int batteryPin = 51;
+const int trimUpPin = 3;
+const int trimDownPin = 4;
+
+//Functions
+void * create_state();
+void update_controls();
+void update_switches();
+void update_starter();
+void send_state();
+void send_calibration();
+void send_test_data();
+void update_fan_speed(char *buff);
+void update_trim_display(char *buff);
+void update_stall_warning(char *buff);
+void freq_test();
 
 void setup() {
   Serial.begin(9600);
@@ -198,7 +198,7 @@ void loop() {
         send_test_data();
       }else if (action == "Z")
       {
-        Serial.println(nbChar);
+        updateXplane = 2;
       }
 
       currCmd = "\0";
@@ -209,10 +209,32 @@ void loop() {
   if (updateXplane == 1){
     //Send current states
     send_states();
+    delay(25);
     //delay(delayLength);
-  }
+  } else if (updateXplane == 2)
+  {
+    freq_test();
+    delay(50);
+  } //else if
   
 }
+
+void freq_test()
+{
+  char buff[256];
+  update_controls();
+  update_starter();
+  update_switches();
+  
+  states->elapsedTime = millis();
+  states->packetCount++;
+  
+  float freq = 1000.0f / (states->elapsedTime - lastTime) ;
+  snprintf(buff,256,"Update Frequency: %0.2f",freq);
+  Serial.println(freq);
+ 
+  lastTime = states->elapsedTime; 
+} //freq_test
 
 //Sends current state of everything
 void send_states()

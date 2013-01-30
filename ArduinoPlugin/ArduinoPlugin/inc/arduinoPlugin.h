@@ -18,7 +18,7 @@
 #include "XPLM/XPLMDataAccess.h"
 #include "XPLM/XPLMUtilities.h"
 #include "XPLM/XPLMGraphics.h"
-
+#include "XPLM/XPLMDisplay.h" //For printing to screen... debugging purposes
 
 //Local functions
 void InitializeStateMemory();
@@ -46,5 +46,26 @@ int ArduinoCommandCB(
 
 void ArduinoDataRefs();
 void UpdateStates();
+
+//--------------Debugging Text Window-------------
+static void MyDrawWindowCallback(
+								 XPLMWindowID		 inWindowID,	
+								 void *			   inRefcon);	
+
+static void MyHandleKeyCallback(
+								XPLMWindowID		 inWindowID,	
+								char				 inKey,	
+								XPLMKeyFlags		 inFlags,	
+								char				 inVirtualKey,	
+								void *			   inRefcon,	
+								int				  losingFocus);	
+
+static int MyHandleMouseClickCallback(
+									  XPLMWindowID		 inWindowID,	
+									  int				  x,	
+									  int				  y,	
+									  XPLMMouseStatus	  inMouse,	
+									  void *			   inRefcon);	
+
 
 #endif
