@@ -73,13 +73,13 @@ void ArduinoCom::SendState(int updatingState, int value)
 //Updates the structure with the latest data, if buffer is complete
 bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 {
-	DWORD nCurrentBytesRead  = 0;
+	//DWORD nCurrentBytesRead  = 0;
 	UINT8 *tmpPtr = NULL;
 
 	#pragma region CommentedRegion
 
-	// read some data
-	nCurrentBytesRead = commread(_buffer, 2 * _nStateSize);
+	// read some data (already have _nTotalBytesRead - _startRead of buffer)
+	_nTotalBytesRead += commread(_buffer + _nTotalBytesRead, _nStateSize - _nTotalBytesRead + _startRead);
 
 	//	search for the start of the frame in the buffer
 	_startRead = find_start(_buffer, _nStateSize);
@@ -91,6 +91,14 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 		_nTotalBytesRead = 0;
 		_startRead = 0;
 
+		return FALSE;
+
+	}  //if
+
+	//if are buffer isn't big enough to fit our frame
+	if (_nTotalBytesRead - _startRead < _nStateSize)
+	{
+		// need to return again to get full frame
 		return FALSE;
 
 	}  //if
@@ -109,9 +117,11 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 
 	//	copy the buffer to the frame
 	memcpy(currentState, _buffer + _startRead, _nStateSize);
+	commflush();
 
 	// reset the buffer
 	_startRead = 0;
+	_nTotalBytesRead = 0;
 
 	return true;
 
