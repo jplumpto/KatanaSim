@@ -19,8 +19,8 @@ ArduinoCom::ArduinoCom(char* commport, int baudrate)
 
 	commopen();
 
-	//_buffer = (UINT8*)malloc(2*sizeof(struct ArduinoStates));
-	_buffer = new ArduinoStates();
+	_buffer = (UINT8*)malloc(2*sizeof(struct ArduinoStates));
+	//_buffer = new ArduinoStates();
 
 } //Constructor
 
@@ -29,8 +29,8 @@ ArduinoCom::~ArduinoCom()
 {
 	cancel_update_cmd();
 	commclose();
-	//free(_buffer);
-	delete _buffer;
+	free(_buffer);
+	//delete _buffer;
 
 }  //Destructor
 
@@ -39,7 +39,7 @@ bool ArduinoCom::Initiate()
 {
 	//Clear any remnants from last run
 	cancel_update_cmd();
-	_bytesRead = 0;
+	_nTotalBytesRead = 0;
 	_startRead = 0;
 
 	return send_update_cmd();
@@ -73,163 +73,47 @@ void ArduinoCom::SendState(int updatingState, int value)
 //Updates the structure with the latest data, if buffer is complete
 bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 {
-	DWORD nBytesRead  = 0;
-	DWORD nUINT16Size = sizeof(UINT16);
-
+	DWORD nCurrentBytesRead  = 0;
 	UINT8 *tmpPtr = NULL;
 
-	UINT16 lpBuf = 0xBAD;
+	#pragma region CommentedRegion
 
-	ArduinoStates tempState;
+	// read some data
+	nCurrentBytesRead = commread(_buffer, 2 * _nStateSize);
 
-	bool bAligned = false;
+	//	search for the start of the frame in the buffer
+	_startRead = find_start(_buffer, _nStateSize);
 
-	if (_nStateSize == commread((UINT8 *)&tempState, _nStateSize))
+	//	if the start of the frame was not found
+	if (_startRead == -1)
 	{
-		if ((tempState.startVar == 0xAAA) && (tempState.endVar))
-		{
-			bAligned = true;
+		// toss the data that was just read and reset the buffer
+		_nTotalBytesRead = 0;
+		_startRead = 0;
 
-			memcpy (currentState, &tempState, _nStateSize);
+		return FALSE;
 
-		}  // if
-		else
-		{
-			if (!bAligned)
-			{
-				commflush();
+	}  //if
 
-			}  // if
+	//if we find the end of the buffer
+	if (((ArduinoStates *)(_buffer + _startRead))->endVar != 0xFFF)
+	{
+		// didn't find the end of the buffer so we can't use the data
+		// toss the data that was just read and reset the buffer
+		_nTotalBytesRead = 0;
+		_startRead = 0;
 
-			// try to get aligned
-			//while (!bAligned)
-			//{
-				if (nUINT16Size != commread ((UINT8*)&lpBuf, nUINT16Size))
-				{
-					break;
-
-				}  // if
-
-				if (lpBuf == 0xAAA)
-				{
-					//bAligned = true; //Still need to read full structure
-					
-					if (_nStateSize - nUINT16Size == commread(((UINT8*)currentState) + nUINT16Size, _nStateSize - nUINT16Size))
-					{
-						bAligned = true;
-
-						if (currentState->batteryState == 1)
-						{
-							static int j = 0;
-							j++;
-
-						}  // if
-
-					} // if
-
-				}  // if
-
-			//}  // while
-
-		}  // else
+		return FALSE;
 
 	}  // if
 
-	return bAligned;
+	//	copy the buffer to the frame
+	memcpy(currentState, _buffer + _startRead, _nStateSize);
 
-	#pragma region CommentedRegion
-	//while (!bAligned)
-	//{
-	//	if (nUINT16Size == commread((UINT8 *)&tempState, nUINT16Size))
-	//	{
-	//		if (tempState.startVar == 0xAAA)
-	//		{
-	//			tmpPtr = ((UINT8*)&tempState ) + nUINT16Size;
+	// reset the buffer
+	_startRead = 0;
 
-	//			nBytesRead = commread(tmpPtr, _nStateSize - nUINT16Size);
-
-	//			if (tempState.endVar == 0xFFF)
-	//			{
-	//				memcpy(currentState, &tempState, _nStateSize);
-
-	//				bAligned = true;
-
-	//			}  // if
-
-	//			return bAligned;
-
-	//		}  // if
-
-	//	}  // if
-
-	//}  // while
-
-	//if (_nStateSize == commread((UINT8*)&tempState, _nStateSize))
-	//{
-	//	memcpy(currentState, &tempState, _nStateSize);
-
-	//}  // if
-	//else
-	//{
-	//	bAligned = false;
-
-	//}  // else
-
-	//return bAligned;
-
-	/*
-
-	// Read bytes missing from full struct size, ensuring that struct
-	// should fit in the buffer
-	nBytesRead = commread(tmpPtr,_nStateSize - _startRead); 
-
-	//Add # bytes read to bytes already in buffer
-	_bytesRead += nBytesRead;  
-
-	//check if buffer is full
-	if (_bytesRead >= _nStateSize) 
-	{
-		//Find location of 0xAAA in buffer
-		UINT8* stPtr = NULL;
-
-		//Find location of StartVariable
-		int startPosition = find_start(stPtr, (UINT8 *)_buffer,_nStateSize);
-		if (startPosition == -1)
-		{
-			//Reset buffer size
-			_bytesRead = 0;
-			_startRead = 0;
-			return FALSE;
-		}
-
-		//Ensure sufficient bytes have been read
-		if (_bytesRead - startPosition < _nStateSize)
-		{
-			_startRead = startPosition;
-			return FALSE;
-		}
-
-		//Reset buffer size
-		_bytesRead = 0;
-		_startRead = 0;
-
-		//Check that test variables matches
-		if ((_buffer->startVar != 0xAAA) || (_buffer->endVar != 0xFFF))
-		{
-			return FALSE;
-		}
-
-		//Copy buffer values to global structure
-		memcpy(currentState,_buffer + startPosition,_nStateSize);
-
-		//Buffer is full and data is properly aligned
-		return TRUE;
-	} 
-
-	//Buffer is not full yet
-	return FALSE;
-
-	*/
+	return true;
 
 	#pragma endregion
 
@@ -297,15 +181,14 @@ bool ArduinoCom::cancel_update_cmd()
 
 
 //Finds 0xAAA in buffer, which marks start of the structure
-int ArduinoCom::find_start(UINT8 *outBuffer, UINT8 *inBuffer, DWORD maxPosition)
+int ArduinoCom::find_start(UINT8 *inBuffer, DWORD maxPosition)
 {
 	for (int i=_startRead;i<(int)maxPosition;i++)
 	{
 		UINT16 *tmpPtr = (UINT16*) (inBuffer+i);
 
-		if (tmpPtr[0] = 0xAAA)
+		if (0xAAA == tmpPtr[0])
 		{
-			outBuffer = inBuffer+i;			
 			return i;
 		}
 	}

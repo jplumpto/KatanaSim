@@ -4,9 +4,6 @@
 #ifndef _ARDUINO_PLUGIN_H_
 #define _ARDUINO_PLUGIN_H_
 
-// Disable depreciation warning.
-#pragma warning( disable : 4996 )
-
 //XML Reading
 #include "../inc/xmlConfig.h"
 

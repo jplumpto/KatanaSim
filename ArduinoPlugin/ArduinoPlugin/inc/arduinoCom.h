@@ -88,10 +88,10 @@ private:
 	int				m_iBaudrate;
 
 	//Serial Read Variables
-	ArduinoStates*	_buffer;
-	DWORD			_bytesRead;
-	int				_startRead;
-	DWORD			_nStateSize;
+	UINT8*	_buffer;
+	DWORD	_nTotalBytesRead;
+	int		_startRead;
+	DWORD	_nStateSize;
 
 
 	//--------------Serial Stuff-----------------
@@ -104,7 +104,7 @@ private:
 	void commstats(COMSTAT& stat);	
 
 	void clear_buffer();
-	int find_start(UINT8 *outBuffer, UINT8 *inBuffer, DWORD maxPosition);
+	int find_start(UINT8 *inBuffer, DWORD maxPosition);
 	bool send_current_cmd();
 	bool send_update_cmd();
 	bool cancel_update_cmd();
