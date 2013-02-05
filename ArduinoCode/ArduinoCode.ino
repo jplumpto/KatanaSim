@@ -8,7 +8,7 @@
  Updated: January 29, 2013
  
  */
-#include <Wire.h>
+//#include <Wire.h>
 #include <string.h>
 
 //Structure should match structure on computer end
@@ -209,12 +209,12 @@ void loop() {
   if (updateXplane == 1){
     //Send current states
     send_states();
-    delay(25);
+    delay(0);
     //delay(delayLength);
   } else if (updateXplane == 2)
   {
     freq_test();
-    delay(50);
+    delay(0);
   } //else if
   
 }
@@ -230,8 +230,8 @@ void freq_test()
   states->packetCount++;
   
   float freq = 1000.0f / (states->elapsedTime - lastTime) ;
-  snprintf(buff,256,"Update Frequency: %0.2f",freq);
-  Serial.println(freq);
+  snprintf(buff,256,"Battery State: %d",states->batteryState);
+  Serial.println(buff);
  
   lastTime = states->elapsedTime; 
 } //freq_test

@@ -73,10 +73,7 @@ void ArduinoCom::SendState(int updatingState, int value)
 //Updates the structure with the latest data, if buffer is complete
 bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 {
-	//DWORD nCurrentBytesRead  = 0;
-	UINT8 *tmpPtr = NULL;
 
-	#pragma region CommentedRegion
 
 	// read some data (already have _nTotalBytesRead - _startRead of buffer)
 	_nTotalBytesRead += commread(_buffer + _nTotalBytesRead, _nStateSize - _nTotalBytesRead + _startRead);
@@ -125,7 +122,6 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 
 	return true;
 
-	#pragma endregion
 
 } //RecvCurrentState
 
@@ -145,8 +141,6 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 bool ArduinoCom::send_current_cmd()
 {
 	char sBuf[5] = {"L;"};
-	//DWORD dwCommEvent;
-	DWORD dwReadSize = sizeof(struct ArduinoStates);
 
 	if(commwrite(sBuf, static_cast<DWORD>(strlen(sBuf))) == 0)
 		return FALSE;
@@ -159,9 +153,6 @@ bool ArduinoCom::send_current_cmd()
 bool ArduinoCom::send_update_cmd()
 {
 	char sBuf[32]; 
-	DWORD dwReadSize = sizeof(struct ArduinoStates);
-
-	//sprintf(sBuf,"U:%03d;",configFile->Delay);
 	sprintf_s(sBuf,25,"U;");
 
 	if(commwrite(sBuf, static_cast<DWORD>(strlen(sBuf))) == 0)
@@ -175,8 +166,6 @@ bool ArduinoCom::send_update_cmd()
 bool ArduinoCom::cancel_update_cmd()
 {
 	char sBuf[5] = {"X;"};
-	//DWORD dwCommEvent;
-	DWORD dwReadSize = sizeof(struct ArduinoStates);
 
 	if(commwrite(sBuf, static_cast<DWORD>(strlen(sBuf))) == 0)
 		return FALSE;
@@ -288,7 +277,7 @@ DWORD ArduinoCom::commopen_internal() {
 	COMMTIMEOUTS ct;
 
 	if ( m_hArduino != INVALID_HANDLE_VALUE ) {
-		return -1;
+		return (DWORD) -1;
 	}
 	m_bCommOpened = FALSE;
 	m_hArduino = CreateFile( m_sCommport,

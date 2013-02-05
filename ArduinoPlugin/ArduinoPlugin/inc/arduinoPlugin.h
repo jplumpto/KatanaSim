@@ -4,6 +4,9 @@
 #ifndef _ARDUINO_PLUGIN_H_
 #define _ARDUINO_PLUGIN_H_
 
+// Disable: unreferenced formal parameter.
+#pragma warning( disable : 4100 )
+
 //XML Reading
 #include "../inc/xmlConfig.h"
 

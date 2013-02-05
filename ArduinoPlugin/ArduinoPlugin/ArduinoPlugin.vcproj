@@ -47,7 +47,7 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
-				WarningLevel="3"
+				WarningLevel="4"
 				DebugInformationFormat="4"
 			/>
 			<Tool
@@ -125,7 +125,7 @@
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				WarningLevel="3"
+				WarningLevel="4"
 				DebugInformationFormat="3"
 			/>
 			<Tool
@@ -141,6 +141,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="XPLM.lib"
 				OutputFile="$(OutDir)\$(ProjectName)_win32r.xpl"
+				Version="0.3"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="../external/XplaneSdk/Libraries/Win"
 				GenerateManifest="false"

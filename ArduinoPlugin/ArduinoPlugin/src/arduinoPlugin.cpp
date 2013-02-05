@@ -382,7 +382,7 @@ void update_controls()
 	/* Update controls */
 	XPLMSetDatavf(_throttle,&throttle,0,1);
 	XPLMSetDatavf(_carbHeat,&carbHeat,0,1);
-	XPLMSetDataf(_propSpeed,propSpeed);
+	XPLMSetDatavf(_propSpeed,&propSpeed,0,1);
 	XPLMSetDataf(_pitch,pitch);
 	XPLMSetDataf(_roll,roll);
 	XPLMSetDataf(_yaw,yaw);
@@ -412,15 +412,15 @@ void update_buttons()
 	int ignitionPos = currentState.ignitionPos;
 	int igniterState = currentState.igniterState;
 	
-	if (lastState.ignitionPos != ignitionPos)
+	if (lastState.ignitionPos != (UINT8)ignitionPos)
 	{
 		XPLMSetDatavi(_ignitionPos,&ignitionPos,0,1);
-		lastState.ignitionPos = ignitionPos;
+		lastState.ignitionPos = (UINT8)ignitionPos;
 	}
-	if (lastState.igniterState != igniterState)
+	if (lastState.igniterState != (UINT8)igniterState)
 	{
 		XPLMSetDatavi(_igniterState,&igniterState,0,1);
-		lastState.igniterState = igniterState;
+		lastState.igniterState = (UINT8)igniterState;
 	}
 	
 	//Change state of Fuel Pump for engine 1
@@ -545,18 +545,18 @@ struct ArduinoStates create_states(){
 
 	struct ArduinoStates state;
 
-	state.igniterState = -1;
-	state.ignitionPos = -1;
-	state.fuelState = -1;
-	state.strobeState = -1;
-	state.landingState = -1;
-	state.taxiState = -1;
-	state.positionState = -1;
-	state.avMasState = -1;
-	state.generatorState = -1;
-	state.batteryState = -1;
-	state.trimDownState = 0;
-	state.trimUpState = 0;
+	state.igniterState = (UINT8) -1;
+	state.ignitionPos = (UINT8) -1;
+	state.fuelState = (UINT8) -1;
+	state.strobeState = (UINT8) -1;
+	state.landingState = (UINT8) -1;
+	state.taxiState = (UINT8) -1;
+	state.positionState = (UINT8) -1;
+	state.avMasState = (UINT8) -1;
+	state.generatorState = (UINT8) -1;
+	state.batteryState = (UINT8) -1;
+	state.trimDownState = (UINT8) 0;
+	state.trimUpState = (UINT8) 0;
 
 	state.throttle = 0;
 	state.propSpeed = 0;
