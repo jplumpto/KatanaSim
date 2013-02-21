@@ -22,9 +22,11 @@
 
 //Local functions
 void InitializeStateMemory();
+void init_circuit_breaker_datarefs();
 void update_controls();
 float invert_control(float percent, int positive, int invert);
-void update_buttons();
+void update_switches();
+void update_circuit_breakers();
 void update_fan_speed();
 void update_trim_position(float trimIncrement);
 void update_trim_display();

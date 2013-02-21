@@ -24,13 +24,22 @@
 #define FLAPS_DISPLAY 1
 #define FAN_SPEED 2
 
+const UINT8 SWITCHES_CLEAR             =   0;   // 0x00000000
+const UINT8 SWITCHES_FUELPUMP_ON       =   1;   // 0x00000001
+const UINT8 SWITCHES_STROBELIGHT_ON    =   2;   // 0x00000010
+const UINT8 SWITCHES_LANDINGLIGHT_ON   =   4;   // 0x00000100
+const UINT8 SWITCHES_TAXILIGHT_ON      =   8;   // 0x00001000
+const UINT8 SWITCHES_NAVLIGHT_ON       =   16;  // 0x00010000
+const UINT8 SWITCHES_AVIONICSMASTER_ON =   32;  // 0x00100000
+const UINT8 SWITCHES_GENERATOR_ON      =   64;  // 0x01000000
+const UINT8 SWITCHES_BATTERY_ON        =   128; // 0x10000000
+
 
 //--------------Arduino Stuff ----------------
 struct ArduinoStates {
 	//Test Variable to Ensure alignment of data
 	UINT16 startVar;
 	UINT16 packetCount;
-	unsigned long   elapsedTime;
 
 	//Controls
 	UINT16 throttle;
@@ -49,16 +58,12 @@ struct ArduinoStates {
 	UINT8 ignitionPos;
 
 	//Switches
-	UINT8 fuelState;
-	UINT8 strobeState;
-	UINT8 landingState;
-	UINT8 taxiState;
-	UINT8 positionState;
-	UINT8 avMasState;
-	UINT8 generatorState;
-	UINT8 batteryState;
-	UINT8 trimUpState;
-	UINT8 trimDownState;
+	UINT8 switchStates; // fuelState; strobeState; landingState; taxiState; positionState; avMasState; generatorState; batteryState;
+	UINT8 trimSwitchPos; // 0 - Trim Button Not Pressed; 1 - Trim Up; 2 - Trim Down
+	UINT8 flapSwitchPos; // 0 - No Flaps; 1 - T/0 Flaps; 2 - Full Flaps
+
+	//Circuit breakers
+	UINT32 cbStates;
 
 	//Test Variable to Ensure alignment of data
 	UINT16 endVar;
@@ -89,9 +94,9 @@ private:
 
 	//Serial Read Variables
 	UINT8*	_buffer;
-	DWORD	_nTotalBytesRead;
-	int		_startRead;
-	DWORD	_nStateSize;
+	//DWORD	_nTotalBytesRead;
+	//int		_startRead;
+	//DWORD	_nStateSize;
 
 
 	//--------------Serial Stuff-----------------

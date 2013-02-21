@@ -15,8 +15,6 @@ ArduinoCom::ArduinoCom(char* commport, int baudrate)
 	m_hArduino = INVALID_HANDLE_VALUE;
 	m_bStop = TRUE;
 
-	_nStateSize = sizeof(ArduinoStates);
-
 	commopen();
 
 	_buffer = (UINT8*)malloc(2*sizeof(struct ArduinoStates));
@@ -39,8 +37,6 @@ bool ArduinoCom::Initiate()
 {
 	//Clear any remnants from last run
 	cancel_update_cmd();
-	_nTotalBytesRead = 0;
-	_startRead = 0;
 
 	return send_update_cmd();
 
@@ -73,10 +69,20 @@ void ArduinoCom::SendState(int updatingState, int value)
 //Updates the structure with the latest data, if buffer is complete
 bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 {
-
+	//Serial Read Variables
+	static DWORD	_nTotalBytesRead = 0;
+	static int		_startRead = 0;
+	const DWORD	_nStateSize = sizeof(ArduinoStates);
 
 	// read some data (already have _nTotalBytesRead - _startRead of buffer)
-	_nTotalBytesRead += commread(_buffer + _nTotalBytesRead, _nStateSize - _nTotalBytesRead + _startRead);
+	_nTotalBytesRead += commread(_buffer + _nTotalBytesRead, (2 * _nStateSize) - _nTotalBytesRead);
+
+	if (_nTotalBytesRead < 2 * _nStateSize)
+	{
+		// we didn't get enough data; just toss it
+		return FALSE;
+
+	}  // if
 
 	//	search for the start of the frame in the buffer
 	_startRead = find_start(_buffer, _nStateSize);
@@ -84,18 +90,10 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 	//	if the start of the frame was not found
 	if (_startRead == -1)
 	{
-		// toss the data that was just read and reset the buffer
+		// we've got bad data here; just toss it
 		_nTotalBytesRead = 0;
 		_startRead = 0;
 
-		return FALSE;
-
-	}  //if
-
-	//if are buffer isn't big enough to fit our frame
-	if (_nTotalBytesRead - _startRead < _nStateSize)
-	{
-		// need to return again to get full frame
 		return FALSE;
 
 	}  //if
@@ -116,12 +114,10 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 	memcpy(currentState, _buffer + _startRead, _nStateSize);
 	commflush();
 
-	// reset the buffer
-	_startRead = 0;
 	_nTotalBytesRead = 0;
+	_startRead = 0;
 
 	return true;
-
 
 } //RecvCurrentState
 
@@ -182,7 +178,7 @@ bool ArduinoCom::cancel_update_cmd()
 //Finds 0xAAA in buffer, which marks start of the structure
 int ArduinoCom::find_start(UINT8 *inBuffer, DWORD maxPosition)
 {
-	for (int i=_startRead;i<(int)maxPosition;i++)
+	for (int i = 0; i < (int)maxPosition; i++)
 	{
 		UINT16 *tmpPtr = (UINT16*) (inBuffer+i);
 
@@ -363,15 +359,15 @@ void ArduinoCom::commflush()
 	}
 
 
-	if (!FlushFileBuffers(m_hArduino))
-	{
-		return;
-	}
+	//if (!FlushFileBuffers(m_hArduino))
+	//{
+	//	return;
+	//}
 
-	if (!PurgeComm(m_hArduino,PURGE_TXCLEAR))
-	{
-		return;
-	}
+	//if (!PurgeComm(m_hArduino,PURGE_TXCLEAR))
+	//{
+	//	return;
+	//}
 
 	if (!PurgeComm(m_hArduino,PURGE_RXCLEAR))
 	{

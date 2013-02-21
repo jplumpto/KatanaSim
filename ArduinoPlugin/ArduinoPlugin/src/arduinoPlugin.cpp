@@ -25,40 +25,71 @@ bool		_updating	= FALSE;
 float			_trimPosition = 0.0f;
 float			_airspeed	  = 0.0f;
 
+#pragma region Datarefs
 //X-Plane Switch Refs
-XPLMDataRef _fuel = NULL;
-XPLMDataRef _strobe = NULL;
-XPLMDataRef _landing = NULL;
-XPLMDataRef _taxi = NULL;
-XPLMDataRef _position = NULL;
-XPLMDataRef _masterAv = NULL;
-XPLMDataRef _generator = NULL;
-XPLMDataRef _battery = NULL;
+XPLMDataRef _fuelPumpDataref = NULL;
+XPLMDataRef _strobeLightDataref = NULL;
+XPLMDataRef _landingLightDataref = NULL;
+XPLMDataRef _taxiLightDataref = NULL;
+XPLMDataRef _navLightDataref = NULL;
+XPLMDataRef _avionicsMasterDataref = NULL;
+XPLMDataRef _generatorDataref = NULL;
+XPLMDataRef _batteryDataref = NULL;
 
 //X-Plane StarterControl Refs
-XPLMDataRef _ignitionPos = NULL;
-XPLMDataRef _igniterState = NULL;
+XPLMDataRef _ignitionPositionDataref = NULL;
+XPLMDataRef _igniterStateDataref = NULL;
 
 //X-Plane ParamRefs
-XPLMDataRef _trimRef = NULL;
-XPLMDataRef _airspeedRef = NULL;
+XPLMDataRef _trimPositionDataref = NULL;
+XPLMDataRef _indicatedAirspeedDataref = NULL;
 
 //X-Plane Control Refs
-XPLMDataRef _throttle = NULL;
-XPLMDataRef _pitch = NULL;
-XPLMDataRef _roll = NULL;
-XPLMDataRef _yaw = NULL;
-XPLMDataRef _propSpeed = NULL;
-XPLMDataRef _lBrake = NULL;
-XPLMDataRef _rBrake = NULL;
-XPLMDataRef _carbHeat = NULL;
-XPLMDataRef _parkBrake = NULL;
+XPLMDataRef _throttleRatioDataref = NULL;
+XPLMDataRef _pitchControlRatioDataref = NULL;
+XPLMDataRef _rollControlRatioDataref = NULL;
+XPLMDataRef _yawControlRatioDataref = NULL;
+XPLMDataRef _propSpeedRatioDataref = NULL;
+XPLMDataRef _leftBrakeRatioDataref = NULL;
+XPLMDataRef _rightBrakeRatioDataref = NULL;
+XPLMDataRef _carbHeatRatioDataref = NULL;
+XPLMDataRef _parkingBrakeRatioDataref = NULL;
 
 //X-Plane Prop Refs
-XPLMDataRef _maxPropSpeed = NULL;
-XPLMDataRef _idlePropSpeed = NULL;
+XPLMDataRef _maxPropSpeedDataref = NULL;
+XPLMDataRef _idlePropSpeedDataref = NULL;
+
+#pragma region CircuitBreakerDatarefs
+XPLMDataRef _cb1Datarefs[2];
+XPLMDataRef _cb2Datarefs[3];
+XPLMDataRef _cb3Dataref		= NULL;
+XPLMDataRef _cb4Dataref		= NULL;
+XPLMDataRef _cb5Dataref		= NULL;
+XPLMDataRef _cb6Dataref		= NULL;
+XPLMDataRef _cb7Dataref		= NULL;
+XPLMDataRef _cb8Dataref		= NULL;
+XPLMDataRef _cb9Dataref		= NULL;
+XPLMDataRef _cb10Dataref	= NULL;
+XPLMDataRef _cb11Dataref	= NULL;
+XPLMDataRef _cb12Dataref	= NULL;
+XPLMDataRef _cb13Dataref	= NULL;
+XPLMDataRef _cb14Dataref	= NULL;
+XPLMDataRef _cb15Dataref	= NULL;
+XPLMDataRef _cb16Dataref	= NULL;
+XPLMDataRef _cb17Dataref	= NULL;
+XPLMDataRef _cb18Dataref	= NULL;
+XPLMDataRef _cb19Dataref	= NULL;
+XPLMDataRef _cb20Dataref	= NULL;
+XPLMDataRef _cb21Dataref	= NULL;
+XPLMDataRef _cb22Dataref	= NULL;
+XPLMDataRef _cb23Dataref	= NULL;
+XPLMDataRef _cb24Dataref	= NULL;
+XPLMDataRef _cb25Dataref	= NULL;
+XPLMDataRef _cb26Dataref	= NULL;
+#pragma endregion
 
 
+#pragma endregion //Datarefs
 /**
 \brief plugin constructor
 Registers MyPosFlightLoopCallback. 
@@ -101,31 +132,31 @@ PLUGIN_API void XPluginDisable(void)
 	_updating = FALSE;
 
 	// Should nullify all registered datarefs
-	_fuel = NULL;
-	_strobe = NULL;
-	_landing = NULL;
-	_taxi = NULL;
-	_position = NULL;
-	_masterAv = NULL;
-	_generator = NULL;
-	_battery = NULL;
+	_fuelPumpDataref		= NULL;
+	_strobeLightDataref		= NULL;
+	_landingLightDataref	= NULL;
+	_taxiLightDataref		= NULL;
+	_navLightDataref		= NULL;
+	_avionicsMasterDataref	= NULL;
+	_generatorDataref		= NULL;
+	_batteryDataref			= NULL;
 
-	_igniterState = NULL;
-	_ignitionPos = NULL;
+	_igniterStateDataref	= NULL;
+	_ignitionPositionDataref = NULL;
 
-	_trimRef = NULL;
-	_airspeedRef = NULL;
+	_trimPositionDataref	= NULL;
+	_indicatedAirspeedDataref = NULL;
 
 	/*------Controls--------*/
-	_throttle = NULL;
-	_propSpeed = NULL;
-	_pitch = NULL;
-	_roll = NULL;
-	_yaw = NULL;
-	_lBrake = NULL;
-	_rBrake = NULL;
-	_carbHeat = NULL;
-	_parkBrake = NULL;
+	_throttleRatioDataref	= NULL;
+	_propSpeedRatioDataref	= NULL;
+	_pitchControlRatioDataref = NULL;
+	_rollControlRatioDataref = NULL;
+	_yawControlRatioDataref	= NULL;
+	_leftBrakeRatioDataref	= NULL;
+	_rightBrakeRatioDataref	= NULL;
+	_carbHeatRatioDataref	= NULL;
+	_parkingBrakeRatioDataref = NULL;
 
 	XPLMUnregisterFlightLoopCallback(ArduinoFlightLoopCallback, NULL);
 	delete _arduino;
@@ -143,11 +174,22 @@ registers MyPosFlightLoopCallback.
 */
 PLUGIN_API int XPluginEnable(void)
 {
-	char filename[1000];
-	char *path;
+	char filename[1024];
+	
 
+#ifdef _DEBUG
+	//Need to define path ourselves (ie missing admin access)
+	char sXPlanePath[512];
+
+	XPLMGetSystemPath(sXPlanePath);
+	sprintf(filename,"%sResources\\plugins\\ArduinoConfig.xml",sXPlanePath);
+#else
+
+	char *path = NULL;
 	path = getenv("XPlanePlugin");
 	sprintf(filename,"%s\\ArduinoConfig.xml",path);
+
+#endif
 
 	configFile = new XmlConfig();
 	configFile->Open(filename);
@@ -188,11 +230,11 @@ void InitializeStateMemory()
 	currentState = create_states();
 
 	//Get current states to update components
-	MAX_PROP_SPEED_RADS = XPLMGetDataf(_maxPropSpeed);
-	IDLE_PROP_SPEED_RADS = XPLMGetDataf(_idlePropSpeed);
+	MAX_PROP_SPEED_RADS = XPLMGetDataf(_maxPropSpeedDataref);
+	IDLE_PROP_SPEED_RADS = XPLMGetDataf(_idlePropSpeedDataref);
 	PROP_SPEED_RANGE_RADS = MAX_PROP_SPEED_RADS - IDLE_PROP_SPEED_RADS;
-	_trimPosition = XPLMGetDataf(_trimRef);
-	_airspeed = XPLMGetDataf(_airspeedRef);
+	_trimPosition = XPLMGetDataf(_trimPositionDataref);
+	_airspeed = XPLMGetDataf(_indicatedAirspeedDataref);
 	update_trim_display();
 }
 
@@ -205,35 +247,38 @@ void ArduinoDataRefs()
 	/*eg. 
 	XPLMDataRef _localx = XPLMFindDataRef("sim/flightmodel/position/local_x");
 	*/
-	_fuel = XPLMFindDataRef("sim/cockpit/engine/fuel_pump_on");
-	_strobe = XPLMFindDataRef("sim/cockpit/electrical/strobe_lights_on");
-	_landing = XPLMFindDataRef("sim/cockpit/electrical/landing_lights_on");
-	_taxi = XPLMFindDataRef("sim/cockpit/electrical/taxi_light_on");
-	_position = XPLMFindDataRef("sim/cockpit/electrical/nav_lights_on");
-	_masterAv = XPLMFindDataRef("sim/cockpit/electrical/avionics_on");
-	_generator = XPLMFindDataRef("sim/cockpit/electrical/generator_on");
-	_battery = XPLMFindDataRef("sim/cockpit/electrical/battery_on");
+	_fuelPumpDataref			= XPLMFindDataRef("sim/cockpit/engine/fuel_pump_on");
+	_strobeLightDataref			= XPLMFindDataRef("sim/cockpit/electrical/strobe_lights_on");
+	_landingLightDataref		= XPLMFindDataRef("sim/cockpit/electrical/landing_lights_on");
+	_taxiLightDataref			= XPLMFindDataRef("sim/cockpit/electrical/taxi_light_on");
+	_navLightDataref			= XPLMFindDataRef("sim/cockpit/electrical/nav_lights_on");
+	_avionicsMasterDataref		= XPLMFindDataRef("sim/cockpit/electrical/avionics_on");
+	_generatorDataref			= XPLMFindDataRef("sim/cockpit/electrical/generator_on");
+	_batteryDataref				= XPLMFindDataRef("sim/cockpit/electrical/battery_on");
 	
 	/*------ Others ---------*/
-	_ignitionPos = XPLMFindDataRef("sim/cockpit/engine/ignition_on");
-	_igniterState = XPLMFindDataRef("sim/cockpit/engine/igniters_on");
-	_trimRef = XPLMFindDataRef("sim/flightmodel/controls/elv_trim");
-	_airspeedRef = XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed");
+	_ignitionPositionDataref	= XPLMFindDataRef("sim/cockpit/engine/ignition_on");
+	_igniterStateDataref		= XPLMFindDataRef("sim/cockpit/engine/igniters_on");
+	_trimPositionDataref		= XPLMFindDataRef("sim/flightmodel/controls/elv_trim");
+	_indicatedAirspeedDataref	= XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed");
 	
 	/*-----  Controls  -----*/
-	_throttle = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
-	_propSpeed = XPLMFindDataRef("sim/flightmodel/engine/ENGN_prop");
-	_pitch = XPLMFindDataRef("sim/joystick/yoke_pitch_ratio");
-	_roll = XPLMFindDataRef("sim/joystick/yoke_roll_ratio");
-	_yaw = XPLMFindDataRef("sim/joystick/yoke_heading_ratio");
-	_lBrake = XPLMFindDataRef("sim/flightmodel/controls/l_brake_add");
-	_rBrake = XPLMFindDataRef("sim/flightmodel/controls/r_brake_add");
-	_carbHeat = XPLMFindDataRef("sim/flightmodel/engine/ENGN_heat");
-	_parkBrake = XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
+	_throttleRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
+	//_propSpeedRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_prop");
+	_propSpeedRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_mixt"); //Apparently uses mixture
+	_pitchControlRatioDataref	= XPLMFindDataRef("sim/joystick/yoke_pitch_ratio");
+	_rollControlRatioDataref	= XPLMFindDataRef("sim/joystick/yoke_roll_ratio");
+	_yawControlRatioDataref		= XPLMFindDataRef("sim/joystick/yoke_heading_ratio");
+	_leftBrakeRatioDataref		= XPLMFindDataRef("sim/flightmodel/controls/l_brake_add");
+	_rightBrakeRatioDataref		= XPLMFindDataRef("sim/flightmodel/controls/r_brake_add");
+	_carbHeatRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_heat");
+	_parkingBrakeRatioDataref	= XPLMFindDataRef("sim/flightmodel/controls/parkbrake");
 
 	/* ------Prop Speed Refs ------------ */
-	_maxPropSpeed = XPLMFindDataRef("sim/aircraft/controls/acf_RSC_redline_prp");
-	_idlePropSpeed = XPLMFindDataRef("sim/aircraft/controls/acf_RSC_idlespeed_prp");
+	_maxPropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_redline_prp");
+	_idlePropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_idlespeed_prp");
+
+	init_circuit_breaker_datarefs();
 }
 
 
@@ -321,15 +366,7 @@ float	ArduinoFlightLoopCallback(
 	//Read bytes from Arduino
 	if ( _arduino->RecvCurrentState(&currentState) )
 	{
-		unsigned long nDeltaTimeArduino = currentState.elapsedTime - lastState.elapsedTime;
-		UINT16 nDeltaPackets = currentState.packetCount - lastState.packetCount;
-		
-		lastState.elapsedTime = currentState.elapsedTime;
-		lastState.packetCount = currentState.packetCount;
-
-		//Update x-plane update frequency
-		float ArduinoFreq = (1000.0f * nDeltaPackets / nDeltaTimeArduino); // = #packets/deltaTime(ms) * 1000 ms / 1 s = Hz
-		sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, Packet = %d, Arduino Hz = %0.2f\n", UpdateFrequency, currentState.packetCount, ArduinoFreq);
+		sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, Reading Packet #%d", UpdateFrequency, currentState.packetCount);
 		
 		//If buffer was properly filled, update states
 		UpdateStates();
@@ -344,8 +381,21 @@ float	ArduinoFlightLoopCallback(
 
 void UpdateStates()
 {
+	static int loopCounter = 0;
 	update_controls();
-	update_buttons();
+
+	//Alternate between updating switches and circuit breakers
+	if (loopCounter == 0)
+	{
+		loopCounter++;
+		update_switches();
+	}//if
+	else
+	{
+		loopCounter = 0;
+		update_circuit_breakers();
+	}//else
+	
 
 	//Every X cycles, update fan speed
 	if (XPLMGetCycleNumber() % 5000 == 0)
@@ -353,7 +403,7 @@ void UpdateStates()
 		update_fan_speed();
 	}
 }
-
+#pragma region ControlInputs
 void update_controls()
 {
 	/* Ratios */
@@ -376,18 +426,18 @@ void update_controls()
 	rBrake = invert_control(rBrake,1,configFile->RightBrakeInvert);
 	carbHeat = invert_control(carbHeat,1,configFile->CarbHeatInvert);
 
-	/* Propeller Speed needs to be converted from ratio to rad/s */
-	float propSpeed = propSpeedRatio * PROP_SPEED_RANGE_RADS + IDLE_PROP_SPEED_RADS;
+	/* Propeller Speed needs to be converted from ratio to rad/s */ //Point_tacrad
+	//float propSpeed = propSpeedRatio * PROP_SPEED_RANGE_RADS + IDLE_PROP_SPEED_RADS;
 
 	/* Update controls */
-	XPLMSetDatavf(_throttle,&throttle,0,1);
-	XPLMSetDatavf(_carbHeat,&carbHeat,0,1);
-	XPLMSetDatavf(_propSpeed,&propSpeed,0,1);
-	XPLMSetDataf(_pitch,pitch);
-	XPLMSetDataf(_roll,roll);
-	XPLMSetDataf(_yaw,yaw);
-	XPLMSetDataf(_lBrake,lBrake);
-	XPLMSetDataf(_rBrake,rBrake);
+	XPLMSetDatavf(_throttleRatioDataref,&throttle,0,1);
+	XPLMSetDatavf(_carbHeatRatioDataref,&carbHeat,0,1);
+	XPLMSetDatavf(_propSpeedRatioDataref,&propSpeedRatio,0,1);
+	XPLMSetDataf(_pitchControlRatioDataref,pitch);
+	XPLMSetDataf(_rollControlRatioDataref,roll);
+	XPLMSetDataf(_yawControlRatioDataref,yaw);
+	XPLMSetDataf(_leftBrakeRatioDataref,lBrake);
+	XPLMSetDataf(_rightBrakeRatioDataref,rBrake);
 }
 
 // Checks if input values need to be inverted (eg switch Left and Right), and returns value accordingly
@@ -405,104 +455,306 @@ float invert_control(float percent, int positive, int invert)
 	return percent;
 }
 
+#pragma endregion //ControlInputs
 
-void update_buttons()
+#pragma region Switches
+void update_switches()
 {
+	int entry = 0;
+
 	/* Starter Switch */
 	int ignitionPos = currentState.ignitionPos;
 	int igniterState = currentState.igniterState;
 	
 	if (lastState.ignitionPos != (UINT8)ignitionPos)
 	{
-		XPLMSetDatavi(_ignitionPos,&ignitionPos,0,1);
+		XPLMSetDatavi(_ignitionPositionDataref,&ignitionPos,0,1);
 		lastState.ignitionPos = (UINT8)ignitionPos;
 	}
 	if (lastState.igniterState != (UINT8)igniterState)
 	{
-		XPLMSetDatavi(_igniterState,&igniterState,0,1);
+		XPLMSetDatavi(_igniterStateDataref,&igniterState,0,1);
 		lastState.igniterState = (UINT8)igniterState;
 	}
 	
 	//Change state of Fuel Pump for engine 1
-	if (lastState.fuelState != currentState.fuelState)
+	entry = (int)(currentState.switchStates & SWITCHES_FUELPUMP_ON);
+	if ( (lastState.switchStates & SWITCHES_FUELPUMP_ON) != entry)
 	{
-		int entry = (int)currentState.fuelState;
-		XPLMSetDatavi(_fuel,&entry,0,1);
-		lastState.fuelState = currentState.fuelState;
+		XPLMSetDatavi(_fuelPumpDataref,&entry,0,1);
 	}
 
 	//Change state of Strobe light
-	if (lastState.strobeState != currentState.strobeState)
+	entry = (int)(currentState.switchStates & SWITCHES_STROBELIGHT_ON);
+	if ( (lastState.switchStates & SWITCHES_STROBELIGHT_ON) != entry)
 	{
-		XPLMSetDatai(_strobe,currentState.strobeState);
-		lastState.strobeState = currentState.strobeState;
+		XPLMSetDatai(_strobeLightDataref,entry);
 	}
 
 	//Change state of landing light
-	if (lastState.landingState != currentState.landingState)
+	entry = (int)(currentState.switchStates & SWITCHES_LANDINGLIGHT_ON);
+	if ( (lastState.switchStates & SWITCHES_LANDINGLIGHT_ON) != entry)
 	{
-		XPLMSetDatai(_landing,currentState.landingState);
-		lastState.landingState = currentState.landingState;
+		XPLMSetDatai(_landingLightDataref,entry);
 	}
 
 	//Change state of taxi light
-	if (lastState.taxiState != currentState.taxiState)
+	entry = (int)(currentState.switchStates & SWITCHES_TAXILIGHT_ON);
+	if ( (lastState.switchStates & SWITCHES_TAXILIGHT_ON) != entry)
 	{
-		XPLMSetDatai(_taxi,currentState.taxiState);
-		lastState.taxiState = currentState.taxiState;
+		XPLMSetDatai(_taxiLightDataref,entry);
 	}
 
 	//Change state of position light
-	if (lastState.positionState != currentState.positionState)
+	entry = (int)(currentState.switchStates & SWITCHES_NAVLIGHT_ON);
+	if ( (lastState.switchStates & SWITCHES_NAVLIGHT_ON) != entry)
 	{
-		XPLMSetDatai(_position,currentState.positionState);
-		lastState.positionState = currentState.positionState;
+		XPLMSetDatai(_navLightDataref,entry);
 	}
 
 	//Change state of avionics master
-	if (lastState.avMasState != currentState.avMasState)
+	entry = (int)(currentState.switchStates & SWITCHES_AVIONICSMASTER_ON);
+	if ( (lastState.switchStates & SWITCHES_AVIONICSMASTER_ON) != entry)
 	{
-		XPLMSetDatai(_masterAv,currentState.avMasState);
-		lastState.avMasState = currentState.avMasState;
+		XPLMSetDatai(_avionicsMasterDataref,entry);
 	}
 
 	//Change state of generator for engine 1
-	if (lastState.generatorState != currentState.generatorState)
+	entry = (int)(currentState.switchStates & SWITCHES_GENERATOR_ON);
+	if ( (lastState.switchStates & SWITCHES_GENERATOR_ON) != entry)
 	{
-		int entry = (int)currentState.generatorState;
-		XPLMSetDatavi(_generator,&entry,0,1);
-		lastState.generatorState = currentState.generatorState;
+		XPLMSetDatavi(_generatorDataref,&entry,0,1);
 	}
 
 	//Change state of battery
-	if (lastState.batteryState != currentState.batteryState)
+	entry = (int)(currentState.switchStates & SWITCHES_BATTERY_ON);
+	if ( (lastState.switchStates & SWITCHES_BATTERY_ON) != entry)
 	{
-		XPLMSetDatai(_battery,currentState.batteryState);
-		lastState.batteryState = currentState.batteryState;
+		XPLMSetDatai(_batteryDataref,entry);
 	}
 
 	//Trim Up Button pressed (holding button does not cause continuous increase)
-	if (currentState.trimUpState == 1 && lastState.trimUpState == 0)
+	if (currentState.trimSwitchPos == 1 && lastState.trimSwitchPos == 0)
 	{
 		update_trim_position(0.05f);
-		lastState.trimUpState = 1;
-	} else if (currentState.trimUpState == 0 && lastState.trimUpState == 1)
+		lastState.trimSwitchPos = 1;
+	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 1)
 	{
-		lastState.trimUpState = 0;
+		lastState.trimSwitchPos = 0;
 	}
 
 	//Trim Dn Button pressed (holding button does not cause continuous decrease)
-	if (currentState.trimDownState == 1 && lastState.trimDownState == 0)
+	if (currentState.trimSwitchPos == 2 && lastState.trimSwitchPos == 0)
 	{
 		update_trim_position(-0.05f);
-		lastState.trimDownState = 1;
-	} else if (currentState.trimDownState == 0 && lastState.trimDownState == 1)
+		lastState.trimSwitchPos = 2;
+	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 2)
 	{
-		lastState.trimDownState = 0;
+		lastState.trimSwitchPos = 0;
+	}
+
+	//Update bitwise points for switches
+	lastState.switchStates = currentState.switchStates;
+}
+#pragma endregion //Switches
+
+#pragma region CircuitBreakers
+void update_circuit_breakers()
+{
+	//Go through circuit breakers updating (if needed) status of failure
+	//Note: in xplane, proper value is value = 6 (immediate failure)
+	//      Need to set value = 6 * entry (ie = 0 or 6)
+	int entry = 0;
+
+	//CB#1
+	entry = (int)(currentState.cbStates & (1 << 0));
+	if ( (int)(lastState.cbStates & (1 << 0)) != entry)
+	{
+		XPLMSetDatai(_cb1Datarefs[0], 6 * entry );
+		XPLMSetDatai(_cb1Datarefs[1], 6 * entry );
+	}
+
+	//CB#2
+	entry = (int)(currentState.cbStates & (1 << 1));
+	if ((int) (lastState.cbStates & (1 << 1)) != entry)
+	{
+		XPLMSetDatai(_cb2Datarefs[0], 6 * entry );
+		XPLMSetDatai(_cb2Datarefs[1], 6 * entry );
+		XPLMSetDatai(_cb2Datarefs[2], 6 * entry );
+	}
+
+	//CB#3
+	entry = (int)(currentState.cbStates & (1 << 2));
+	if ( (int)(lastState.cbStates & (1 << 2)) != entry)
+	{
+		XPLMSetDatai(_cb3Dataref, 6 * entry );
+	}
+
+	//CB#4
+	entry = (int)(currentState.cbStates & (1 << 3));
+	if ( (int)(lastState.cbStates & (1 << 3)) != entry)
+	{
+		XPLMSetDatai(_cb4Dataref, 6 * entry );
+	}
+
+	//CB#5
+	entry = (int)(currentState.cbStates & (1 << 4));
+	if ( (int)(lastState.cbStates & (1 << 4)) != entry)
+	{
+		XPLMSetDatai(_cb5Dataref, 6 * entry );
+	}
+
+	//CB#6 - Internal Lights (ie not x-plane
+	//entry = (int)(currentState.cbStates & (1 << 5));
+	//if ( (lastState.cbStates & (1 << 5)) != entry)
+	//{
+	//	XPLMSetDatai(_cb6Dataref, 6 * entry );
+	//}
+
+	//CB#7
+	entry = (int)(currentState.cbStates & (1 << 6));
+	if ( (int)(lastState.cbStates & (1 << 6)) != entry)
+	{
+		XPLMSetDatai(_cb7Dataref, 6 * entry );
+	}
+
+	//CB#8
+	entry = (int)(currentState.cbStates & (1 << 7));
+	if ((int) (lastState.cbStates & (1 << 7)) != entry)
+	{
+		XPLMSetDatai(_cb8Dataref, 6 * entry );
+	}
+
+	//CB#9
+	entry = (int)(currentState.cbStates & (1 << 8));
+	if ((int) (lastState.cbStates & (1 << 8)) != entry)
+	{
+		XPLMSetDatai(_cb9Dataref, 6 * entry );
+	}
+
+	//CB#10
+	entry = (int)(currentState.cbStates & (1 << 9));
+	if ((int) (lastState.cbStates & (1 << 9)) != entry)
+	{
+		XPLMSetDatai(_cb10Dataref, 6 * entry );
+	}
+
+	//CB#11
+	entry = (int)(currentState.cbStates & (1 << 10));
+	if ((int) (lastState.cbStates & (1 << 10)) != entry)
+	{
+		XPLMSetDatai(_cb11Dataref, 6 * entry );
+	}
+
+	//CB#12
+	entry = (int)(currentState.cbStates & (1 << 11));
+	if ((int) (lastState.cbStates & (1 << 11)) != entry)
+	{
+		XPLMSetDatai(_cb12Dataref, 6 * entry );
+	}
+
+	//CB#13
+	entry = (int)(currentState.cbStates & (1 << 12));
+	if ((int) (lastState.cbStates & (1 << 12)) != entry)
+	{
+		XPLMSetDatai(_cb13Dataref, 6 * entry );
+	}
+
+	//CB#14
+	entry = (int)(currentState.cbStates & (1 << 13));
+	if ( (int)(lastState.cbStates & (1 << 13)) != entry)
+	{
+		XPLMSetDatai(_cb14Dataref, 6 * entry );
+	}
+
+	//CB#15
+	entry = (int)(currentState.cbStates & (1 << 14));
+	if ((int) (lastState.cbStates & (1 << 14)) != entry)
+	{
+		XPLMSetDatai(_cb15Dataref, 6 * entry );
+	}
+
+
+
+	//CB#16
+	entry = (int)(currentState.cbStates & (1 << 15));
+	if ((int) (lastState.cbStates & (1 << 15)) != entry)
+	{
+		XPLMSetDatai(_cb16Dataref, 6 * entry );
+	}
+	
+	//CB#17
+	entry = (int)(currentState.cbStates & (1 << 16));
+	if ((int) (lastState.cbStates & (1 << 16)) != entry)
+	{
+		XPLMSetDatai(_cb17Dataref, 6 * entry );
+	}
+	
+	
+	//CB#18
+	entry = (int)(currentState.cbStates & (1 << 17));
+	if ((int) (lastState.cbStates & (1 << 17)) != entry)
+	{
+		XPLMSetDatai(_cb18Dataref, 6 * entry );
+	}
+	
+	//CB#19
+	entry = (int)(currentState.cbStates & (1 << 18));
+	if ((int) (lastState.cbStates & (1 << 18)) != entry)
+	{
+		XPLMSetDatai(_cb19Dataref, 6 * entry );
+	}
+	
+	//CB#20
+	entry = (int)(currentState.cbStates & (1 << 19));
+	if ((int) (lastState.cbStates & (1 << 19)) != entry)
+	{
+		XPLMSetDatai(_cb20Dataref, 6 * entry );
+	}
+
+	//CB#21
+	entry = (int)(currentState.cbStates & (1 << 20));
+	if ( (int)(lastState.cbStates & (1 << 20)) != entry)
+	{
+		XPLMSetDatai(_cb21Dataref, 6 * entry );
+	}
+
+	//CB#22
+	entry = (int)(currentState.cbStates & (1 << 21));
+	if ((int) (lastState.cbStates & (1 << 21)) != entry)
+	{
+		XPLMSetDatai(_cb22Dataref, 6 * entry );
+	}
+	//CB#23
+	entry = (int)(currentState.cbStates & (1 << 22));
+	if ((int) (lastState.cbStates & (1 << 22)) != entry)
+	{
+		XPLMSetDatai(_cb23Dataref, 6 * entry );
+	}
+
+	//CB#24
+	entry = (int)(currentState.cbStates & (1 << 23));
+	if ((int) (lastState.cbStates & (1 << 23)) != entry)
+	{
+		XPLMSetDatai(_cb24Dataref, 6 * entry );
+	}
+	//CB#25
+	entry = (int)(currentState.cbStates & (1 << 24));
+	if ( (int)(lastState.cbStates & (1 << 24)) != entry)
+	{
+		XPLMSetDatai(_cb25Dataref, 6 * entry );
+	}
+
+	//CB#26
+	entry = (int)(currentState.cbStates & (1 << 25));
+	if ( (int)(lastState.cbStates & (1 << 25)) != entry)
+	{
+		XPLMSetDatai(_cb26Dataref, 6 * entry );
 	}
 }
+#pragma endregion //CircuitBreakers
 
-
+#pragma  region SendUpdateData
 //Change trim state in X-Plane
 void update_trim_position(float trimIncrement)
 {
@@ -512,7 +764,7 @@ void update_trim_position(float trimIncrement)
 	if (MIN_TRIM_DEFLECTION < trim && trim < MAX_TRIM_DEFLECTION)
 	{
 		_trimPosition = trim;
-		XPLMSetDataf(_trimRef,_trimPosition);
+		XPLMSetDataf(_trimPositionDataref,_trimPosition);
 		update_trim_display();
 	}
 }
@@ -533,11 +785,12 @@ void update_fan_speed()
 {
 	int fanSpeed = 0;
 
-	_airspeed = XPLMGetDataf(_airspeedRef);
+	_airspeed = XPLMGetDataf(_indicatedAirspeedDataref);
 	fanSpeed =  max((int)(_airspeed * 255 / MAX_AIRSPEED), 50 );
 
 	_arduino->SendState(FAN_SPEED,fanSpeed);
 }
+#pragma endregion //SendUpdate
 
 
 //Ensure no null pointers in structure
@@ -545,18 +798,12 @@ struct ArduinoStates create_states(){
 
 	struct ArduinoStates state;
 
-	state.igniterState = (UINT8) -1;
-	state.ignitionPos = (UINT8) -1;
-	state.fuelState = (UINT8) -1;
-	state.strobeState = (UINT8) -1;
-	state.landingState = (UINT8) -1;
-	state.taxiState = (UINT8) -1;
-	state.positionState = (UINT8) -1;
-	state.avMasState = (UINT8) -1;
-	state.generatorState = (UINT8) -1;
-	state.batteryState = (UINT8) -1;
-	state.trimDownState = (UINT8) 0;
-	state.trimUpState = (UINT8) 0;
+	state.igniterState = (UINT8) 6;
+	state.ignitionPos = (UINT8) 6;
+	state.switchStates = (UINT8) 0;
+	state.cbStates = (UINT32) 0;
+	state.trimSwitchPos = (UINT8) 4;
+	state.flapSwitchPos = (UINT8) 4;
 
 	state.throttle = 0;
 	state.propSpeed = 0;
@@ -568,4 +815,45 @@ struct ArduinoStates create_states(){
 	state.rBrake = 0;
 
 	return state;
+}
+
+
+
+void init_circuit_breaker_datarefs()
+{
+	
+	_cb1Datarefs[0]	= XPLMFindDataRef("sim/operation/failures/rel_CHT_ind_0");
+	_cb1Datarefs[1]	= XPLMFindDataRef("sim/operation/failures/rel_oilp_ind_0");
+	
+	_cb2Datarefs[0]	= XPLMFindDataRef("sim/operation/failures/rel_oilt_ind_0");
+	_cb2Datarefs[1]	= XPLMFindDataRef("sim/operation/failures/rel_g_fuel");
+	_cb2Datarefs[2]	= XPLMFindDataRef("sim/operation/failures/rel_g_oat");
+
+	_cb3Dataref		= XPLMFindDataRef("sim/operation/failures/rel_ele_fuepmp0");
+	_cb4Dataref		= XPLMFindDataRef("sim/operation/failures/rel_lites_land");
+	_cb5Dataref		= XPLMFindDataRef("sim/operation/failures/rel_lites_taxi");
+	_cb6Dataref		= XPLMFindDataRef("sim/operation/failures/rel_clights");
+	_cb7Dataref		= XPLMFindDataRef("sim/operation/failures/rel_lites_nav");
+	_cb8Dataref		= XPLMFindDataRef("sim/operation/failures/rel_lites_strobe");
+	_cb9Dataref		= XPLMFindDataRef("sim/operation/failures/rel_start0");
+	_cb10Dataref	= XPLMFindDataRef("sim/operation/failures/rel_genera0"); //-----------NEED TO FIND SOMETHING TO FAIL!!!!
+	_cb11Dataref	= XPLMFindDataRef("sim/operation/failures/rel_genera0");
+	_cb12Dataref	= XPLMFindDataRef("sim/operation/failures/rel_batter0");
+
+	_cb13Dataref	= XPLMFindDataRef("sim/operation/failures/rel_nav1");
+	_cb14Dataref	= XPLMFindDataRef("sim/operation/failures/rel_nav2");
+	_cb15Dataref	= XPLMFindDataRef("sim/operation/failures/rel_xpndr");
+	_cb16Dataref	= XPLMFindDataRef("sim/operation/failures/rel_"); //--------WHAT IS ICS???
+	_cb17Dataref	= XPLMFindDataRef("sim/operation/failures/rel_gen_avio");
+	_cb18Dataref	= XPLMFindDataRef("sim/operation/failures/rel_gen_avio"); //--------FIND APPROPRIATE FAILURE!!!
+	_cb19Dataref	= XPLMFindDataRef("sim/operation/failures/rel_ss_ahz");
+	_cb20Dataref	= XPLMFindDataRef("sim/operation/failures/rel_ss_dgy");
+	_cb21Dataref	= XPLMFindDataRef("sim/operation/failures/rel_ss_tsi");
+	_cb22Dataref	= XPLMFindDataRef("sim/operation/failures/rel_flap_act");
+	_cb23Dataref	= XPLMFindDataRef("sim/operation/failures/rel_"); //-------------NEED TO FAIL ELEV TRIM
+
+	_cb24Dataref	= XPLMFindDataRef("sim/operation/failures/rel_adf1");
+	_cb25Dataref	= XPLMFindDataRef("sim/operation/failures/rel_dme");
+	_cb26Dataref	= XPLMFindDataRef("sim/operation/failures/rel_marker");
+
 }

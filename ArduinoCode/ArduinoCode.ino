@@ -3,7 +3,7 @@
  
  Reads the states of devices connected to Arduino and sends to PC.
  For calibration, sends string of control inputs.
- For xplaneplugin, sends bytes of all states. 
+ For xplaneplugin, sends uint8_ts of all states. 
  
  Updated: January 29, 2013
  
@@ -11,14 +11,26 @@
 //#include <Wire.h>
 #include <string.h>
 
+// fuelState; strobeState; landingState; taxiState; positionState; avMasState; generatorState; batteryState;
+//Define Switch BIT flags
+const uint8_t SWITCHES_CLEAR             =   0;   // 0x00000000
+const uint8_t SWITCHES_FUELPUMP_ON       =   1;   // 0x00000001
+const uint8_t SWITCHES_STROBELIGHT_ON    =   2;   // 0x00000010
+const uint8_t SWITCHES_LANDINGLIGHT_ON   =   4;   // 0x00000100
+const uint8_t SWITCHES_TAXILIGHT_ON      =   8;   // 0x00001000
+const uint8_t SWITCHES_NAVLIGHT_ON       =   16;  // 0x00010000
+const uint8_t SWITCHES_AVIONICSMASTER_ON =   32;  // 0x00100000
+const uint8_t SWITCHES_GENERATOR_ON      =   64;  // 0x01000000
+const uint8_t SWITCHES_BATTERY_ON        =   128; // 0x10000000
+
+
 //Structure should match structure on computer end
 #pragma pack(1)
 struct ArduinoStates {
   //Test Variable for alignment
   uint16_t startVar;
   uint16_t packetCount;
-  unsigned long elapsedTime;
-  
+    
   //controls
   uint16_t throttle;
   uint16_t propSpeed;
@@ -36,16 +48,12 @@ struct ArduinoStates {
   uint8_t ignitionPos;
   
   //Switches
-  uint8_t fuelState;
-  uint8_t strobeState;
-  uint8_t landingState;
-  uint8_t taxiState;
-  uint8_t positionState;
-  uint8_t avMasState;
-  uint8_t generatorState;
-  uint8_t batteryState;
-  uint8_t trimUpState;
-  uint8_t trimDownState;
+  uint8_t switchStates; // fuelState; strobeState; landingState; taxiState; positionState; avMasState; generatorState; batteryState;
+  uint8_t trimSwitchPos; // 0 - Trim Button Not Pressed; 1 - Trim Up; 2 - Trim Down
+  uint8_t flapSwitchPos; // 0 - No Flaps; 1 - T/0 Flaps; 2 - Full Flaps
+  
+  //Circuit breakers
+  uint32_t cbStates;
   
   //Test Variable for alignment
   uint16_t endVar;
@@ -63,6 +71,9 @@ unsigned long nbChar = 0;
 unsigned long nbCali = 0;
 
 /*    Pin locations     */
+//CBs
+int CB[28]; //Initiated in function
+
 //Controls
 const int pitchPin = A0;   //Cable 1
 const int rollPin = A1;    //Cable 2
@@ -82,12 +93,12 @@ const int trimTabPin = 14;
 const int starterPin = 2;
 const int leftMagPin = 53;
 const int rightMagPin = 52;
-const int fuelPin = 44;
+const int fuelPumpPin = 44;
 const int strobePin = 45;
 const int landingPin = 46;
 const int taxiPin = 47;
 const int positionPin = 48;
-const int avMasterPin = 49;
+const int avionicsMasterPin = 49;
 const int generatorPin = 50;
 const int batteryPin = 51;
 const int trimUpPin = 3;
@@ -104,11 +115,18 @@ void send_test_data();
 void update_fan_speed(char *buff);
 void update_trim_display(char *buff);
 void update_stall_warning(char *buff);
-void freq_test();
+void random_test();
+void snprintSwitches(char *buff, int maxChars);
+
+//Circuit Breakers
+void initiate_breakers();
+void update_breakers();
+int get_breaker(int x);
 
 void setup() {
   Serial.begin(9600);
   create_state();
+  initiate_breakers();
   
   pinMode(fanPin,OUTPUT);
 }
@@ -213,201 +231,13 @@ void loop() {
     //delay(delayLength);
   } else if (updateXplane == 2)
   {
-    freq_test();
+    random_test();
     delay(0);
   } //else if
   
 }
 
-void freq_test()
-{
-  char buff[256];
-  update_controls();
-  update_starter();
-  update_switches();
-  
-  states->elapsedTime = millis();
-  states->packetCount++;
-  
-  float freq = 1000.0f / (states->elapsedTime - lastTime) ;
-  snprintf(buff,256,"Battery State: %d",states->batteryState);
-  Serial.println(buff);
- 
-  lastTime = states->elapsedTime; 
-} //freq_test
-
-//Sends current state of everything
-void send_states()
-{
-  update_controls();
-  update_starter();
-  update_switches();
-  
-  states->elapsedTime = millis();
-  states->packetCount++;
-  
-  Serial.write((uint8_t*)states,nbChar);
-}
-
-//Updates state of controls
-void update_controls()
-{
-  states->throttle = analogRead(throttlePin);
-  states->propSpeed = analogRead(propSpeedPin); 
-  states->pitch = analogRead(pitchPin);
-  states->roll = analogRead(rollPin);
-  states->yaw = analogRead(yawPin);
-  states->carbHeat = analogRead(carbHeatPin);
-  states->lBrake = analogRead(lBrakePin);
-  states->rBrake = analogRead(rBrakePin);
-  states->pBrake = analogRead(pBrakePin);
-  states->choke = analogRead(chokePin);
-}
-
-//Update state of igniter and ignition position
-void update_starter()
-{
-  int leftMag = digitalRead( leftMagPin );
-  int rightMag = digitalRead( rightMagPin );
-  states->ignitionPos = 0 + (rightMag == 0) + 2 * (leftMag == 0); //Matches X-Plane Dataref
-  states->igniterState = digitalRead( starterPin );
-}
-
-//Updates state of switches
-void update_switches()
-{
-  states->fuelState = digitalRead( fuelPin );
-  states->strobeState = digitalRead( strobePin );
-  states->landingState = digitalRead( landingPin );
-  states->taxiState = digitalRead( taxiPin );
-  states->positionState = digitalRead( positionPin );
-  states->avMasState = digitalRead( avMasterPin );
-  states->generatorState = digitalRead( generatorPin );
-  states->batteryState = digitalRead( batteryPin );
-  states->trimUpState = digitalRead( trimUpPin );
-  states->trimDownState = digitalRead( trimDownPin );
-}
-
-//Sends to PC current state of calibration components
-void send_calibration()
-{
-  char output[256];
-  update_controls();
-  //Var1:value;Var2:value;Var3:value...
-  snprintf( output, 256, "PI:%d;RL:%d;YW:%d;TH:%d;LB:%d;RB:%d;ES:%d;CH:%d;CK:%d;PB:%d",states->pitch,states->roll,states->yaw,states->throttle,states->lBrake,states->rBrake,states->propSpeed,states->carbHeat,states->choke,states->pBrake );
-  Serial.println( output );
-}
-
-//Sends to PC current state of all components
-void send_test_data()
-{
-  char output[256];
-  update_controls();
-  update_starter();
-  update_switches();
-  states->elapsedTime = millis();
-
-  //Var1:value;Var2:value;Var3:value...
-  snprintf( output, 256, "startVar:%d;ElapsedTime:%lu",states->startVar,states->elapsedTime);
-  Serial.println( output );
-  snprintf( output, 256, "PI:%d;RL:%d;YW:%d;TH:%d;LB:%d;RB:%d;ES:%d;CH:%d;CK:%d;PB:%d;",states->pitch,states->roll,states->yaw,states->throttle,states->lBrake,states->rBrake,states->propSpeed,states->carbHeat,states->choke,states->pBrake );
-  Serial.println( output );
-  snprintf( output, 256, "Ignition:%d;Igniter:%d;",states->ignitionPos,states->igniterState );
-  Serial.println( output );
-  snprintf( output, 256, "Fuel:%d;Strobe:%d;Land:%d;Taxi:%d;Position:%d;Avionics:%d;Gen:%d;Batt:%d;",states->fuelState,states->strobeState,states->landingState,states->taxiState,states->positionState,states->avMasState,states->generatorState,states->batteryState );
-  Serial.println( output );
-  snprintf( output, 256, "endVar:%d",states->endVar);
-  Serial.println( output );
-}
 
 
-//Update the speed of the fan
-void update_fan_speed(char *buff)
-{
-  int val = 255; //255 is max output value
-  int success = 0;
-  char *entry;
-  
-//  Serial.print("Updating fan speed: ");
-//  Serial.println(buff);
-  
-  entry = strtok(buff,";"); //Should return 'F'
-  success = sscanf(buff,"%d",&val);
-  
-  if (success == 1)
-  {
-    //analogWrite(fanPin,val);
-    Serial.print("Fan speed set to following percent: ");
-    Serial.println(val);
-  } 
-}
 
-
-//Update the trim display
-void update_trim_display(char *buff)
-{
-  int val = 255;
-  
-  analogWrite(trimTabPin,val);
-}
-
-//Update the stall warning
-void update_stall_warning(char *buff)
-{
-  int val = 255; //255 is max output value
-  int success = 0;
-  char *entry;
-  
-//  Serial.print("Updating fan speed: ");
-//  Serial.println(buff);
-  
-  entry = strtok(buff,";"); //Should return 'F'
-  success = sscanf(buff,"%d",&val);
-  
-  if (success == 1)
-  {
-    //analogWrite(fanPin,val);
-    Serial.print("Stall warning set to following percent: ");
-    Serial.println(val);
-  } 
-}
-
-
-//Initialize State variable
-void * create_state(){
-  nbChar = sizeof(ArduinoStates);
-  states = (ArduinoStates *) malloc(nbChar);
-
-  if (states)
-  {
-      states->startVar = 0xAAA;
-      states->packetCount = 0;
-      states->elapsedTime = 0;
-      
-      states->throttle = 0;
-      states->propSpeed = 0; 
-      states->pitch = 0;
-      states->roll = 0;
-      states->yaw = 0;
-      states->carbHeat = 0;
-      states->lBrake = 0;
-      states->rBrake = 0;
-      states->choke = 0;
-      states->pBrake = 0;
-      
-      states->fuelState = 0;
-      states->strobeState = 0;
-      states->landingState = 0;
-      states->taxiState = 0;
-      states->positionState = 0;
-      states->avMasState = 0;
-      states->generatorState = 0;
-      states->batteryState = 0;
-      states->trimUpState = 0;
-      states->trimDownState = 0;
-      
-      states->endVar = 0xFFF;
-  }
-  
-}
 

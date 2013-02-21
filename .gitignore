@@ -2,6 +2,7 @@
 *.exp
 *.xpl
 ArduinoPlugin.lib
+ArduinoPlugin_win32r.lib
 
 #################
 ## Eclipse
