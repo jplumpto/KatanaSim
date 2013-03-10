@@ -40,9 +40,9 @@ public:
 	int RightBrakeMin;
 	int RightBrakeMax;
 	int RightBrakeInvert;
-	int EngineMin;
-	int EngineMax;
-	int EngineInvert;
+	int PropSpeedMin;
+	int PropSpeedMax;
+	int PropSpeedInvert;
 	int CarbHeatMin;
 	int CarbHeatMax;
 	int CarbHeatInvert;

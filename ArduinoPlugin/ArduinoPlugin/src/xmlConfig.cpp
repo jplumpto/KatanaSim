@@ -18,9 +18,9 @@ XmlConfig::XmlConfig()
 	YawMin = 0;
 	YawMax = 1024;
 	YawInvert = 0;
-	EngineMin = 0;
-	EngineMax = 1024;
-	EngineInvert = 0;
+	PropSpeedMin = 0;
+	PropSpeedMax = 1024;
+	PropSpeedInvert = 0;
 	CarbHeatMin = 0;
 	CarbHeatMax = 1024;
 	CarbHeatInvert = 0;
@@ -176,20 +176,20 @@ void XmlConfig::Open(const char *filename)
 			entry = strtok(NULL,"<>");
 			sscanf(entry,"%d",&RightBrakeInvert);
 		}
-		else if (strcmp(entry,"EngineMin") == 0)
+		else if (strcmp(entry,"PropSpeedMin") == 0)
 		{
 			entry = strtok(NULL,"<>");
-			sscanf(entry,"%d",&EngineMin);
+			sscanf(entry,"%d",&PropSpeedMin);
 		}
-		else if (strcmp(entry,"EngineMax") == 0)
+		else if (strcmp(entry,"PropSpeedMax") == 0)
 		{
 			entry = strtok(NULL,"<>");
-			sscanf(entry,"%d",&EngineMax);
+			sscanf(entry,"%d",&PropSpeedMax);
 		}
-		else if (strcmp(entry,"EngineInvert") == 0)
+		else if (strcmp(entry,"PropSpeedInvert") == 0)
 		{
 			entry = strtok(NULL,"<>");
-			sscanf(entry,"%d",&EngineInvert);
+			sscanf(entry,"%d",&PropSpeedInvert);
 		}
 		else if (strcmp(entry,"CarbHeatMin") == 0)
 		{

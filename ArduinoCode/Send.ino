@@ -8,9 +8,9 @@ void random_test()
   update_switches();
   update_breakers();
   
-  states->packetCount++;
+  //states->packetCount++;
   
-  snprintf(buff,256,"Battery State: %d",states->cbStates & SWITCHES_BATTERY_ON);
+  snprintf(buff,256,"Ignition Position: %d; Igniter State: %d",states->ignitionPos, states->igniterState);
   Serial.println(buff);
  
 } //random_test
@@ -23,7 +23,7 @@ void send_states()
   update_switches();
   update_breakers();
   
-  states->packetCount++;
+  //states->packetCount++;
   
   Serial.write((uint8_t*)states,nbChar);
 }

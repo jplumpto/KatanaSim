@@ -366,10 +366,13 @@ float	ArduinoFlightLoopCallback(
 	//Read bytes from Arduino
 	if ( _arduino->RecvCurrentState(&currentState) )
 	{
-		sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, Reading Packet #%d", UpdateFrequency, currentState.packetCount);
+		sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, CBStates #%d", UpdateFrequency, currentState.cbStates);
 		
 		//If buffer was properly filled, update states
 		UpdateStates();
+
+		//Clear the buffer
+		_arduino->ClearBuffer();
 	}
 
 	/* return -1 so we get called every frame
@@ -408,7 +411,7 @@ void update_controls()
 {
 	/* Ratios */
 	float throttle = 1.0f * ( currentState.throttle - configFile->ThrottleMin) / (configFile->ThrottleMax - configFile->ThrottleMin);
-	float propSpeedRatio = 1.0f * (currentState.propSpeed - configFile->EngineMin) / (configFile->EngineMax - configFile->EngineMin);
+	float propSpeedRatio = 1.0f * (currentState.propSpeed - configFile->PropSpeedMin) / (configFile->PropSpeedMax - configFile->PropSpeedMin);
 	float pitch = 2.0f * (currentState.pitch - configFile->PitchMin) / (configFile->PitchMax - configFile->PitchMin) - 1.0f;
 	float roll = 2.0f * (currentState.roll - configFile->RollMin) / (configFile->RollMax - configFile->RollMin) - 1.0f;
 	float yaw = 2.0f * (currentState.yaw - configFile->YawMin) / (configFile->YawMax - configFile->YawMin) - 1.0f;
@@ -418,7 +421,7 @@ void update_controls()
 
 	/* Correct for inverted values where needed  */
 	throttle = invert_control(throttle,1,configFile->ThrottleInvert);
-	propSpeedRatio = invert_control(propSpeedRatio,1,configFile->EngineInvert);
+	propSpeedRatio = invert_control(propSpeedRatio,1,configFile->PropSpeedInvert);
 	pitch = invert_control(pitch,0,configFile->PitchInvert);
 	roll = invert_control(roll,0,configFile->RollInvert);
 	yaw = invert_control(yaw,0,configFile->YawInvert);
@@ -460,7 +463,25 @@ float invert_control(float percent, int positive, int invert)
 #pragma region Switches
 void update_switches()
 {
+	static int ForceSwitchUpdateCounter = 0;
+	int iStateChanges = 0;
 	int entry = 0;
+
+	//Every 60 calls to update_switches, force update (ie roughly 1 Hz)
+	if (ForceSwitchUpdateCounter == 30)
+	{
+		//Toggle bool switches in current state, forcing update
+		lastState.switchStates = ~currentState.switchStates;
+	} //if
+	else if (ForceSwitchUpdateCounter == 60)
+	{
+		// Force non bool switches to update by providing absurd former states
+		lastState.igniterState	= (UINT8) 6;
+		lastState.ignitionPos	= (UINT8) 6;
+		lastState.trimSwitchPos = (UINT8) 4;
+		lastState.flapSwitchPos = (UINT8) 4;
+		ForceSwitchUpdateCounter = 0; // Reset counter
+	} //else if
 
 	/* Starter Switch */
 	int ignitionPos = currentState.ignitionPos;
@@ -476,60 +497,62 @@ void update_switches()
 		XPLMSetDatavi(_igniterStateDataref,&igniterState,0,1);
 		lastState.igniterState = (UINT8)igniterState;
 	}
+
+	iStateChanges = currentState.switchStates ^ lastState.switchStates;
 	
 	//Change state of Fuel Pump for engine 1
-	entry = (int)(currentState.switchStates & SWITCHES_FUELPUMP_ON);
-	if ( (lastState.switchStates & SWITCHES_FUELPUMP_ON) != entry)
+	if ( iStateChanges & SWITCHES_FUELPUMP_ON )
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_FUELPUMP_ON));
 		XPLMSetDatavi(_fuelPumpDataref,&entry,0,1);
 	}
 
 	//Change state of Strobe light
-	entry = (int)(currentState.switchStates & SWITCHES_STROBELIGHT_ON);
-	if ( (lastState.switchStates & SWITCHES_STROBELIGHT_ON) != entry)
+	if ( iStateChanges & SWITCHES_STROBELIGHT_ON)
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_STROBELIGHT_ON));
 		XPLMSetDatai(_strobeLightDataref,entry);
 	}
 
 	//Change state of landing light
-	entry = (int)(currentState.switchStates & SWITCHES_LANDINGLIGHT_ON);
-	if ( (lastState.switchStates & SWITCHES_LANDINGLIGHT_ON) != entry)
+	if ( iStateChanges & SWITCHES_LANDINGLIGHT_ON)
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_LANDINGLIGHT_ON));
 		XPLMSetDatai(_landingLightDataref,entry);
 	}
 
 	//Change state of taxi light
-	entry = (int)(currentState.switchStates & SWITCHES_TAXILIGHT_ON);
-	if ( (lastState.switchStates & SWITCHES_TAXILIGHT_ON) != entry)
+	if ( iStateChanges & SWITCHES_TAXILIGHT_ON)
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_TAXILIGHT_ON));
 		XPLMSetDatai(_taxiLightDataref,entry);
 	}
 
 	//Change state of position light
-	entry = (int)(currentState.switchStates & SWITCHES_NAVLIGHT_ON);
-	if ( (lastState.switchStates & SWITCHES_NAVLIGHT_ON) != entry)
+	if ( iStateChanges & SWITCHES_NAVLIGHT_ON)
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_NAVLIGHT_ON));
 		XPLMSetDatai(_navLightDataref,entry);
 	}
 
 	//Change state of avionics master
-	entry = (int)(currentState.switchStates & SWITCHES_AVIONICSMASTER_ON);
-	if ( (lastState.switchStates & SWITCHES_AVIONICSMASTER_ON) != entry)
+	if ( iStateChanges & SWITCHES_AVIONICSMASTER_ON)
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_AVIONICSMASTER_ON));
 		XPLMSetDatai(_avionicsMasterDataref,entry);
 	}
 
 	//Change state of generator for engine 1
-	entry = (int)(currentState.switchStates & SWITCHES_GENERATOR_ON);
-	if ( (lastState.switchStates & SWITCHES_GENERATOR_ON) != entry)
+	if ( iStateChanges & SWITCHES_GENERATOR_ON)
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_GENERATOR_ON));
 		XPLMSetDatavi(_generatorDataref,&entry,0,1);
 	}
 
 	//Change state of battery
-	entry = (int)(currentState.switchStates & SWITCHES_BATTERY_ON);
-	if ( (lastState.switchStates & SWITCHES_BATTERY_ON) != entry)
+	if ( iStateChanges & SWITCHES_BATTERY_ON)
 	{
+		entry = (0 != (currentState.switchStates & SWITCHES_BATTERY_ON));
 		XPLMSetDatai(_batteryDataref,entry);
 	}
 
@@ -555,6 +578,7 @@ void update_switches()
 
 	//Update bitwise points for switches
 	lastState.switchStates = currentState.switchStates;
+	ForceSwitchUpdateCounter++; //Update counter for next call
 }
 #pragma endregion //Switches
 
@@ -564,43 +588,53 @@ void update_circuit_breakers()
 	//Go through circuit breakers updating (if needed) status of failure
 	//Note: in xplane, proper value is value = 6 (immediate failure)
 	//      Need to set value = 6 * entry (ie = 0 or 6)
+	static int ForceCBUpdateCounter = 0;
 	int entry = 0;
+	int iStateChanges = lastState.cbStates ^ currentState.cbStates;
+
+	//Force update once every 100 calls 
+	if (ForceCBUpdateCounter == 100)
+	{
+		//Toggle values to force update
+		//lastState.cbStates = ~currentState.cbStates;
+		ForceCBUpdateCounter = 0; //Reset counter
+	}
 
 	//CB#1
-	entry = (int)(currentState.cbStates & (1 << 0));
-	if ( (int)(lastState.cbStates & (1 << 0)) != entry)
+	if ((iStateChanges & (1 << 0))  || (ForceCBUpdateCounter == 0) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 0)));
 		XPLMSetDatai(_cb1Datarefs[0], 6 * entry );
 		XPLMSetDatai(_cb1Datarefs[1], 6 * entry );
 	}
 
 	//CB#2
-	entry = (int)(currentState.cbStates & (1 << 1));
-	if ((int) (lastState.cbStates & (1 << 1)) != entry)
+	if ((iStateChanges & (1 << 1))  || (ForceCBUpdateCounter == 0) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 1)));
 		XPLMSetDatai(_cb2Datarefs[0], 6 * entry );
 		XPLMSetDatai(_cb2Datarefs[1], 6 * entry );
 		XPLMSetDatai(_cb2Datarefs[2], 6 * entry );
 	}
 
 	//CB#3
-	entry = (int)(currentState.cbStates & (1 << 2));
-	if ( (int)(lastState.cbStates & (1 << 2)) != entry)
+	if ((iStateChanges & (1 << 2))  || (ForceCBUpdateCounter == 0) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 2)));
 		XPLMSetDatai(_cb3Dataref, 6 * entry );
 	}
 
 	//CB#4
-	entry = (int)(currentState.cbStates & (1 << 3));
-	if ( (int)(lastState.cbStates & (1 << 3)) != entry)
+	if ((iStateChanges & (1 << 3))  || (ForceCBUpdateCounter == 0) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 3)));
 		XPLMSetDatai(_cb4Dataref, 6 * entry );
 	}
 
 	//CB#5
-	entry = (int)(currentState.cbStates & (1 << 4));
-	if ( (int)(lastState.cbStates & (1 << 4)) != entry)
+	if ((iStateChanges & (1 << 4))  || (ForceCBUpdateCounter == 25) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 4)));
 		XPLMSetDatai(_cb5Dataref, 6 * entry );
 	}
 
@@ -612,145 +646,147 @@ void update_circuit_breakers()
 	//}
 
 	//CB#7
-	entry = (int)(currentState.cbStates & (1 << 6));
-	if ( (int)(lastState.cbStates & (1 << 6)) != entry)
+	if ((iStateChanges & (1 << 6))  || (ForceCBUpdateCounter == 25) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 6)));
 		XPLMSetDatai(_cb7Dataref, 6 * entry );
 	}
 
 	//CB#8
-	entry = (int)(currentState.cbStates & (1 << 7));
-	if ((int) (lastState.cbStates & (1 << 7)) != entry)
+	if ((iStateChanges & (1 << 7))  || (ForceCBUpdateCounter == 25) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 7)));
 		XPLMSetDatai(_cb8Dataref, 6 * entry );
 	}
 
 	//CB#9
-	entry = (int)(currentState.cbStates & (1 << 8));
-	if ((int) (lastState.cbStates & (1 << 8)) != entry)
+	if ((iStateChanges & (1 << 8))  || (ForceCBUpdateCounter == 25) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 8)));
 		XPLMSetDatai(_cb9Dataref, 6 * entry );
 	}
 
 	//CB#10
-	entry = (int)(currentState.cbStates & (1 << 9));
-	if ((int) (lastState.cbStates & (1 << 9)) != entry)
+	if ((iStateChanges & (1 << 9))  || (ForceCBUpdateCounter == 25) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 9)));
 		XPLMSetDatai(_cb10Dataref, 6 * entry );
 	}
 
-	//CB#11
-	entry = (int)(currentState.cbStates & (1 << 10));
-	if ((int) (lastState.cbStates & (1 << 10)) != entry)
+	//CB#11 
+	if ((iStateChanges & (1 << 10))  || (ForceCBUpdateCounter == 25) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 10)));
 		XPLMSetDatai(_cb11Dataref, 6 * entry );
 	}
 
-	//CB#12
-	entry = (int)(currentState.cbStates & (1 << 11));
-	if ((int) (lastState.cbStates & (1 << 11)) != entry)
+	//CB#12 - Battery
+	if ((iStateChanges & (1 << 11))  || (ForceCBUpdateCounter == 25) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 11)));
 		XPLMSetDatai(_cb12Dataref, 6 * entry );
 	}
 
 	//CB#13
-	entry = (int)(currentState.cbStates & (1 << 12));
-	if ((int) (lastState.cbStates & (1 << 12)) != entry)
+	if ((iStateChanges & (1 << 12))  || (ForceCBUpdateCounter == 50) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 12)));
 		XPLMSetDatai(_cb13Dataref, 6 * entry );
 	}
 
 	//CB#14
-	entry = (int)(currentState.cbStates & (1 << 13));
-	if ( (int)(lastState.cbStates & (1 << 13)) != entry)
+	if ((iStateChanges & (1 << 13))  || (ForceCBUpdateCounter == 50) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 13)));
 		XPLMSetDatai(_cb14Dataref, 6 * entry );
 	}
 
 	//CB#15
-	entry = (int)(currentState.cbStates & (1 << 14));
-	if ((int) (lastState.cbStates & (1 << 14)) != entry)
+	if ((iStateChanges & (1 << 14))  || (ForceCBUpdateCounter == 50) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 14)));
 		XPLMSetDatai(_cb15Dataref, 6 * entry );
 	}
 
 
 
 	//CB#16
-	entry = (int)(currentState.cbStates & (1 << 15));
-	if ((int) (lastState.cbStates & (1 << 15)) != entry)
+	/*if ((iStateChanges & (1 << 15))  || (ForceCBUpdateCounter == 50) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 15)));
 		XPLMSetDatai(_cb16Dataref, 6 * entry );
-	}
+	}*/
 	
 	//CB#17
-	entry = (int)(currentState.cbStates & (1 << 16));
-	if ((int) (lastState.cbStates & (1 << 16)) != entry)
+	if ((iStateChanges & (1 << 16))  || (ForceCBUpdateCounter == 50) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 16)));
 		XPLMSetDatai(_cb17Dataref, 6 * entry );
 	}
 	
 	
 	//CB#18
-	entry = (int)(currentState.cbStates & (1 << 17));
-	if ((int) (lastState.cbStates & (1 << 17)) != entry)
+	if ((iStateChanges & (1 << 17))  || (ForceCBUpdateCounter == 50) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 17)));
 		XPLMSetDatai(_cb18Dataref, 6 * entry );
 	}
 	
 	//CB#19
-	entry = (int)(currentState.cbStates & (1 << 18));
-	if ((int) (lastState.cbStates & (1 << 18)) != entry)
+	if ((iStateChanges & (1 << 18))  || (ForceCBUpdateCounter == 50) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 18)));
 		XPLMSetDatai(_cb19Dataref, 6 * entry );
 	}
 	
 	//CB#20
-	entry = (int)(currentState.cbStates & (1 << 19));
-	if ((int) (lastState.cbStates & (1 << 19)) != entry)
+	if ((iStateChanges & (1 << 19))  || (ForceCBUpdateCounter == 75) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 19)));
 		XPLMSetDatai(_cb20Dataref, 6 * entry );
 	}
 
 	//CB#21
-	entry = (int)(currentState.cbStates & (1 << 20));
-	if ( (int)(lastState.cbStates & (1 << 20)) != entry)
+	if ((iStateChanges & (1 << 20))  || (ForceCBUpdateCounter == 75) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 20)));
 		XPLMSetDatai(_cb21Dataref, 6 * entry );
 	}
 
 	//CB#22
-	entry = (int)(currentState.cbStates & (1 << 21));
-	if ((int) (lastState.cbStates & (1 << 21)) != entry)
+	if ((iStateChanges & (1 << 21))  || (ForceCBUpdateCounter == 75) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 21)));
 		XPLMSetDatai(_cb22Dataref, 6 * entry );
 	}
 	//CB#23
-	entry = (int)(currentState.cbStates & (1 << 22));
-	if ((int) (lastState.cbStates & (1 << 22)) != entry)
+	/*if ((iStateChanges & (1 << 22))  || (ForceCBUpdateCounter == 75) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 22)));
 		XPLMSetDatai(_cb23Dataref, 6 * entry );
-	}
+	}*/
 
 	//CB#24
-	entry = (int)(currentState.cbStates & (1 << 23));
-	if ((int) (lastState.cbStates & (1 << 23)) != entry)
+	if ((iStateChanges & (1 << 23))  || (ForceCBUpdateCounter == 75) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 23)));
 		XPLMSetDatai(_cb24Dataref, 6 * entry );
 	}
 	//CB#25
-	entry = (int)(currentState.cbStates & (1 << 24));
-	if ( (int)(lastState.cbStates & (1 << 24)) != entry)
+	if ((iStateChanges & (1 << 24))  || (ForceCBUpdateCounter == 75) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 24)));
 		XPLMSetDatai(_cb25Dataref, 6 * entry );
 	}
 
 	//CB#26
-	entry = (int)(currentState.cbStates & (1 << 25));
-	if ( (int)(lastState.cbStates & (1 << 25)) != entry)
+	if ((iStateChanges & (1 << 25))  || (ForceCBUpdateCounter == 75) )
 	{
+		entry = (0 != (currentState.cbStates & (1 << 25)));
 		XPLMSetDatai(_cb26Dataref, 6 * entry );
 	}
+
+	ForceCBUpdateCounter++;
 }
 #pragma endregion //CircuitBreakers
 

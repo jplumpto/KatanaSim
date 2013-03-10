@@ -2,7 +2,7 @@
 // Update buffer with string of updated switchs
 void snprintSwitches(char *buff, int maxChars)
 {
-  uint32_t cb = states->cbStates;
+  uint8_t cb = states->switchStates;
   snprintf( buff, maxChars, "Fuel:%d;Strobe:%d;Land:%d;Taxi:%d;Position:%d;Avionics:%d;Gen:%d;Batt:%d;",
             cb & SWITCHES_FUELPUMP_ON , cb & SWITCHES_STROBELIGHT_ON , cb & SWITCHES_LANDINGLIGHT_ON ,
             cb & SWITCHES_TAXILIGHT_ON , cb & SWITCHES_NAVLIGHT_ON , cb & SWITCHES_AVIONICSMASTER_ON ,
@@ -19,7 +19,7 @@ void * create_state(){
   if (states)
   {
       states->startVar = 0xAAA;
-      states->packetCount = 0;
+      //states->packetCount = 0;
       
       states->throttle = 0;
       states->propSpeed = 0; 
@@ -38,7 +38,7 @@ void * create_state(){
       
       states->cbStates = 0;
       
-      states->endVar = 0xFFF;
+      states->endVar = 0xFF;
   }
   
 }

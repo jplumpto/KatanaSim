@@ -39,7 +39,7 @@ const UINT8 SWITCHES_BATTERY_ON        =   128; // 0x10000000
 struct ArduinoStates {
 	//Test Variable to Ensure alignment of data
 	UINT16 startVar;
-	UINT16 packetCount;
+	//UINT16 packetCount;
 
 	//Controls
 	UINT16 throttle;
@@ -57,16 +57,16 @@ struct ArduinoStates {
 	UINT8 igniterState;
 	UINT8 ignitionPos;
 
+	//Circuit breakers
+	UINT32 cbStates;
+
 	//Switches
 	UINT8 switchStates; // fuelState; strobeState; landingState; taxiState; positionState; avMasState; generatorState; batteryState;
 	UINT8 trimSwitchPos; // 0 - Trim Button Not Pressed; 1 - Trim Up; 2 - Trim Down
 	UINT8 flapSwitchPos; // 0 - No Flaps; 1 - T/0 Flaps; 2 - Full Flaps
 
-	//Circuit breakers
-	UINT32 cbStates;
-
 	//Test Variable to Ensure alignment of data
-	UINT16 endVar;
+	UINT8 endVar;
 }; //struct ArduinoStates
 
 
@@ -81,6 +81,7 @@ public:
 	bool Initiate();  //Sends command to Arduino to start sending packets
 	void SendState(int updatingState, int value);  //For updating things such as Trim or Flaps display
 	bool RecvCurrentState(struct ArduinoStates* currentState);  //Updates the structure with the latest data
+	void ClearBuffer();  //Clears buffer
 	//And so on as required...
 
 private:

@@ -5,7 +5,7 @@
  For calibration, sends string of control inputs.
  For xplaneplugin, sends uint8_ts of all states. 
  
- Updated: January 29, 2013
+ Updated: February 26, 2013
  
  */
 //#include <Wire.h>
@@ -29,7 +29,7 @@ const uint8_t SWITCHES_BATTERY_ON        =   128; // 0x10000000
 struct ArduinoStates {
   //Test Variable for alignment
   uint16_t startVar;
-  uint16_t packetCount;
+  //uint16_t packetCount;
     
   //controls
   uint16_t throttle;
@@ -47,20 +47,20 @@ struct ArduinoStates {
   uint8_t igniterState;
   uint8_t ignitionPos;
   
+  //Circuit breakers
+  uint32_t cbStates;
+  
   //Switches
   uint8_t switchStates; // fuelState; strobeState; landingState; taxiState; positionState; avMasState; generatorState; batteryState;
   uint8_t trimSwitchPos; // 0 - Trim Button Not Pressed; 1 - Trim Up; 2 - Trim Down
   uint8_t flapSwitchPos; // 0 - No Flaps; 1 - T/0 Flaps; 2 - Full Flaps
   
-  //Circuit breakers
-  uint32_t cbStates;
-  
   //Test Variable for alignment
-  uint16_t endVar;
+  uint8_t endVar;
 }; //ArduinoStates structure
 
 String currCmd = "\0";
-String updateDate = "January 29, 2013";
+String updateDate = "February 26, 2013";
 int  updateXplane = 0;
 int delayLength = 0;
 unsigned long lastTime = 0;
@@ -91,8 +91,8 @@ const int fanPin = 13;
 const int trimTabPin = 14;
 
 const int starterPin = 2;
-const int leftMagPin = 53;
-const int rightMagPin = 52;
+const int leftMagPin = 15;
+const int rightMagPin = 14;
 const int fuelPumpPin = 44;
 const int strobePin = 45;
 const int landingPin = 46;
@@ -161,7 +161,7 @@ void loop() {
         send_calibration();
       }else if (action == "U") //X-Plane Initiate Update Request
       {
-        states->packetCount = 0;
+        //states->packetCount = 0;
         updateXplane = 1;
         delayLength = 0;
         if( currCmd[1] == ':' )

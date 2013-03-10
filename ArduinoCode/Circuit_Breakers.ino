@@ -15,7 +15,7 @@ void update_breakers()
   {
     if ( digitalRead(CB[i]))
     {
-      states->cbStates ^= 1 << i;
+      states->cbStates ^= 1 << i - 1;
     } //if
     
   }//for

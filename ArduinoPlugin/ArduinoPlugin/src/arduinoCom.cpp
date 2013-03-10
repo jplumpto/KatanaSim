@@ -99,7 +99,7 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 	}  //if
 
 	//if we find the end of the buffer
-	if (((ArduinoStates *)(_buffer + _startRead))->endVar != 0xFFF)
+	if (((ArduinoStates *)(_buffer + _startRead))->endVar != 0xFF)
 	{
 		// didn't find the end of the buffer so we can't use the data
 		// toss the data that was just read and reset the buffer
@@ -112,7 +112,7 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 
 	//	copy the buffer to the frame
 	memcpy(currentState, _buffer + _startRead, _nStateSize);
-	commflush();
+	//commflush();
 
 	_nTotalBytesRead = 0;
 	_startRead = 0;
@@ -122,7 +122,10 @@ bool ArduinoCom::RecvCurrentState(ArduinoStates* currentState)
 } //RecvCurrentState
 
 
-
+void ArduinoCom::ClearBuffer()
+{
+	clear_buffer();
+} //ClearBuffer
 
 
 
