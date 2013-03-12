@@ -3,6 +3,7 @@
 *.xpl
 ArduinoPlugin.lib
 ArduinoPlugin_win32r.lib
+ArduinoPlugin_x64r.lib
 
 #################
 ## Eclipse
