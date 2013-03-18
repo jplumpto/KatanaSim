@@ -56,7 +56,7 @@ void ArduinoCom::SendState(int updatingState, int value)
 		sprintf_s(sBuf,25,"F:%d;",value);
 		break;
 	case FAN_SPEED:
-		sprintf_s(sBuf,25,"F:%d;",value);
+		sprintf_s(sBuf,25,"V:%d;",value);
 		break;
 	default: //Not a command Arduino recognises
 		return;

@@ -27,9 +27,10 @@ void update_controls();
 float invert_control(float percent, int positive, int invert);
 void update_switches();
 void update_circuit_breakers();
-void update_fan_speed();
+void update_ventilation_speed();
 void update_trim_position(float trimIncrement);
 void update_trim_display();
+void update_flaps_display();
 void sleep();
 struct ArduinoStates create_states();
 

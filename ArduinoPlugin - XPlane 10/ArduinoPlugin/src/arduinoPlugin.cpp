@@ -41,6 +41,7 @@ XPLMDataRef _ignitionPositionDataref = NULL;
 XPLMDataRef _igniterStateDataref = NULL;
 
 //X-Plane ParamRefs
+XPLMDataRef _flapsPositionDataref = NULL;
 XPLMDataRef _trimPositionDataref = NULL;
 XPLMDataRef _indicatedAirspeedDataref = NULL;
 
@@ -146,6 +147,7 @@ PLUGIN_API void XPluginDisable(void)
 
 	_trimPositionDataref	= NULL;
 	_indicatedAirspeedDataref = NULL;
+	_flapsPositionDataref	= NULL;
 
 	/*------Controls--------*/
 	_throttleRatioDataref	= NULL;
@@ -261,6 +263,7 @@ void ArduinoDataRefs()
 	_igniterStateDataref		= XPLMFindDataRef("sim/cockpit/engine/igniters_on");
 	_trimPositionDataref		= XPLMFindDataRef("sim/flightmodel/controls/elv_trim");
 	_indicatedAirspeedDataref	= XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed");
+	_flapsPositionDataref		= XPLMFindDataRef("sim/flightmodel/controls/flaprat");
 	
 	/*-----  Controls  -----*/
 	_throttleRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
@@ -392,7 +395,7 @@ void UpdateStates()
 	//Every X cycles, update fan speed
 	if (XPLMGetCycleNumber() % 5000 == 0)
 	{
-		update_fan_speed();
+		update_ventilation_speed();
 	}
 }
 #pragma region ControlInputs
@@ -467,7 +470,7 @@ void update_switches()
 		// Force non bool switches to update by providing absurd former states
 		lastState.igniterState	= (UINT8) 6;
 		lastState.ignitionPos	= (UINT8) 6;
-		lastState.trimSwitchPos = (UINT8) 4;
+		lastState.trimSwitchPos = (UINT8) 0;
 		lastState.flapSwitchPos = (UINT8) 4;
 		ForceSwitchUpdateCounter = 0; // Reset counter
 	} //else if
@@ -786,12 +789,21 @@ void update_trim_position(float trimIncrement)
 	float trim = _trimPosition + trimIncrement;
 
 	//Ensure change in trim can be made
-	if (MIN_TRIM_DEFLECTION < trim && trim < MAX_TRIM_DEFLECTION)
+	if (MIN_TRIM_DEFLECTION <= trim && trim <= MAX_TRIM_DEFLECTION)
 	{
 		_trimPosition = trim;
 		XPLMSetDataf(_trimPositionDataref,_trimPosition);
 		update_trim_display();
 	}
+}
+
+//Send command to arduino to update flaps position display
+void update_flaps_display()
+{
+	//Want value 0 - 255
+	int flapsRatio = (int) ( 255 * XPLMGetDataf(_flapsPositionDataref) );
+
+	_arduino->SendState(FLAPS_DISPLAY,flapsRatio);
 }
 
 //Send command to arduino to update trim tab display
@@ -806,7 +818,7 @@ void update_trim_display()
 }
 
 //Sends command to update ventilation fan speed based on airspeed
-void update_fan_speed()
+void update_ventilation_speed()
 {
 	int fanSpeed = 0;
 
@@ -827,7 +839,7 @@ struct ArduinoStates create_states(){
 	state.ignitionPos = (UINT8) 6;
 	state.switchStates = (UINT8) 0;
 	state.cbStates = (UINT32) 0;
-	state.trimSwitchPos = (UINT8) 4;
+	state.trimSwitchPos = (UINT8) 0;
 	state.flapSwitchPos = (UINT8) 4;
 
 	state.throttle = 0;

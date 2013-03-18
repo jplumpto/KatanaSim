@@ -88,7 +88,8 @@ const int rBrakePin = A9;
 
 //Digital Pins
 const int fanPin = 13;
-const int trimTabPin = 14;
+const int trimTabPin = 5;
+const int flapsDisplayPin = 6;
 
 const int starterPin = 2;
 const int leftMagPin = 15;
@@ -112,8 +113,9 @@ void update_starter();
 void send_state();
 void send_calibration();
 void send_test_data();
-void update_fan_speed(char *buff);
+void update_ventilation_speed(char *buff);
 void update_trim_display(char *buff);
+void update_flaps_display(char *buff);
 void update_stall_warning(char *buff);
 void random_test();
 void snprintSwitches(char *buff, int maxChars);
@@ -129,6 +131,7 @@ void setup() {
   initiate_breakers();
   
   pinMode(fanPin,OUTPUT);
+  pinMode(trimTabPin,OUTPUT);
 }
 
 
@@ -147,6 +150,7 @@ void loop() {
       
       if(temp == ';') 
       { 
+         currCmd += "\0";
          break;
       }
     }
@@ -184,22 +188,60 @@ void loop() {
       }else if (action == "X") //Cancel X-Plane Update
       {
         updateXplane = 0;
-      }else if (action == "F") //Updates Fan Speed
+      }else if (action == "V") //Updates Ventilation Speed
       {
-        buff[0] = currCmd[2];
-        buff[1] = currCmd[3];
-        buff[2] = currCmd[4];
-        buff[3] = currCmd[5];
-        buff[4] = currCmd[6];
-        update_fan_speed(buff);
+        //currCmd = "V:%d;"; // where %d is 0 - 255
+        if ( currCmd[1] == ':')
+        {
+          buff[0] = currCmd[2];
+          buff[1] = currCmd[3];
+          buff[2] = currCmd[4];
+          buff[3] = currCmd[5];
+          buff[4] = currCmd[6];
+          update_ventilation_speed(buff);
+        } //if
       }else if (action == "T")  //Updates the trim display
       {
-        buff[0] = currCmd[2];
-        buff[1] = currCmd[3];
-        buff[2] = currCmd[4];
-        buff[3] = currCmd[5];
-        buff[4] = currCmd[6];
-        update_trim_display(buff);
+        //currCmd = "T:%d;"; // where %d is 0 - 255
+
+        int i = 0;
+        int j = 2;
+        int length = currCmd.length();
+        
+        if ( currCmd[1] == ':')
+        {
+          for (i = 0, j = 2; j < length - 1; i++, j++)
+          {
+            buff[i] = currCmd[j];
+            
+          }  // for
+          
+          buff[i] = '\0';
+          
+          update_trim_display(buff);
+        } //if
+        
+      }else if (action == "F")  //Updates the Flaps display
+      {
+        //currCmd = "F:%d;"; // where %d is 0 - 255
+
+        int i = 0;
+        int j = 2;
+        int length = currCmd.length();
+        
+        if ( currCmd[1] == ':')
+        {
+          for (i = 0, j = 2; j < length - 1; i++, j++)
+          {
+            buff[i] = currCmd[j];
+            
+          }  // for
+          
+          buff[i] = '\0';
+          
+          update_flaps_display(buff);
+        } //if
+        
       }else if (action == "S")  //Updates stall warning
       {
         buff[0] = currCmd[2];
@@ -208,7 +250,7 @@ void loop() {
         buff[3] = currCmd[5];
         buff[4] = currCmd[6];
         update_stall_warning(buff);
-      }else if (action == "V")  //Prints to screen last update of Arduino Code
+      }else if (action == "R")  //Prints to screen last update of Arduino Code
       {
         Serial.println(updateDate);
       }else if (action == "A")  //Prints to screen last update of Arduino Code

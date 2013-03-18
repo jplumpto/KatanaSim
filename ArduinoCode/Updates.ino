@@ -81,20 +81,18 @@ void update_switches()
 
 
 //Update the speed of the fan
-void update_fan_speed(char *buff)
+void update_ventilation_speed(char *buff)
 {
   int val = 255; //255 is max output value
   int success = 0;
   char *entry;
   
-  entry = strtok(buff,";"); //Should return 'F'
+  entry = strtok(buff,";"); //Should return 'V'
   success = sscanf(buff,"%d",&val);
   
   if (success == 1)
   {
-    //analogWrite(fanPin,val);
-    Serial.print("Fan speed set to following percent: ");
-    Serial.println(val);
+    analogWrite(fanPin,val);
   } 
 }
 
@@ -102,9 +100,27 @@ void update_fan_speed(char *buff)
 //Update the trim display
 void update_trim_display(char *buff)
 {
-  int val = 255;
+  int val;
   
-  analogWrite(trimTabPin,val);
+  success = sscanf(buff, "%d", &val);
+ 
+  if (success == 1)
+  {
+    analogWrite(trimTabPin,val);
+  } //if
+}
+
+//Update the flaps display
+void update_flaps_display(char *buff)
+{
+  int val;
+  
+  success = sscanf(buff, "%d", &val);
+  
+  if (success == 1)
+  {
+    analogWrite(flapsDisplayPin,val);
+  } //if
 }
 
 //Update the stall warning
