@@ -77,6 +77,8 @@ void update_switches()
   {
     states->trimSwitchPos = 2;
   } //if
+  
+  states->flapSwitchPos = -1 * digitalRead(flapsUpPin) + 1 + digitalRead(flapsFullPin);
 }
 
 
@@ -102,7 +104,7 @@ void update_trim_display(char *buff)
 {
   int val;
   
-  success = sscanf(buff, "%d", &val);
+  int success = sscanf(buff, "%d", &val);
  
   if (success == 1)
   {
@@ -115,7 +117,7 @@ void update_flaps_display(char *buff)
 {
   int val;
   
-  success = sscanf(buff, "%d", &val);
+  int success = sscanf(buff, "%d", &val);
   
   if (success == 1)
   {

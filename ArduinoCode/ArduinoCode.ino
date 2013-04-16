@@ -5,7 +5,7 @@
  For calibration, sends string of control inputs.
  For xplaneplugin, sends uint8_ts of all states. 
  
- Updated: February 26, 2013
+ Updated: April 16, 2013
  
  */
 //#include <Wire.h>
@@ -60,7 +60,7 @@ struct ArduinoStates {
 }; //ArduinoStates structure
 
 String currCmd = "\0";
-String updateDate = "February 26, 2013";
+String updateDate = "April 16, 2013";
 int  updateXplane = 0;
 int delayLength = 0;
 unsigned long lastTime = 0;
@@ -102,8 +102,10 @@ const int positionPin = 48;
 const int avionicsMasterPin = 49;
 const int generatorPin = 50;
 const int batteryPin = 51;
-const int trimUpPin = 3;
-const int trimDownPin = 4;
+const int trimUpPin = 4; //Needed to reverse
+const int trimDownPin = 3;
+const int flapsUpPin = 16;
+const int flapsFullPin = 18;
 
 //Functions
 void * create_state();

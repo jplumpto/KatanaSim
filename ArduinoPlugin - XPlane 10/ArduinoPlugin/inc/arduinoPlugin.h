@@ -46,24 +46,24 @@ void ArduinoDataRefs();
 void UpdateStates();
 
 //--------------Debugging Text Window-------------
-static void MyDrawWindowCallback(
-								 XPLMWindowID		 inWindowID,	
-								 void *			   inRefcon);	
-
-static void MyHandleKeyCallback(
-								XPLMWindowID		 inWindowID,	
-								char				 inKey,	
-								XPLMKeyFlags		 inFlags,	
-								char				 inVirtualKey,	
-								void *			   inRefcon,	
-								int				  losingFocus);	
-
-static int MyHandleMouseClickCallback(
-									  XPLMWindowID		 inWindowID,	
-									  int				  x,	
-									  int				  y,	
-									  XPLMMouseStatus	  inMouse,	
-									  void *			   inRefcon);	
+// static void MyDrawWindowCallback(
+// 								 XPLMWindowID		 inWindowID,	
+// 								 void *			   inRefcon);	
+// 
+// static void MyHandleKeyCallback(
+// 								XPLMWindowID		 inWindowID,	
+// 								char				 inKey,	
+// 								XPLMKeyFlags		 inFlags,	
+// 								char				 inVirtualKey,	
+// 								void *			   inRefcon,	
+// 								int				  losingFocus);	
+// 
+// static int MyHandleMouseClickCallback(
+// 									  XPLMWindowID		 inWindowID,	
+// 									  int				  x,	
+// 									  int				  y,	
+// 									  XPLMMouseStatus	  inMouse,	
+// 									  void *			   inRefcon);	
 
 
 #endif

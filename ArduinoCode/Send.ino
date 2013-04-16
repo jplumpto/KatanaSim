@@ -10,7 +10,7 @@ void random_test()
   
   //states->packetCount++;
   
-  snprintf(buff,256,"Ignition Position: %d; Igniter State: %d",states->ignitionPos, states->igniterState);
+  snprintf(buff,256,"Flaps Position: %d;",states->flapSwitchPos);
   Serial.println(buff);
  
 } //random_test

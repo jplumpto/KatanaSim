@@ -10,6 +10,12 @@ const float MAX_TRIM_DEFLECTION = 0.5f;
 const float MIN_TRIM_DEFLECTION = -0.5f;
 const float MAX_AIRSPEED = 120.0f;
 
+//Flap Constants
+const float TAKEOFF_FLAPS_RATIO = 0.375f;
+const int NO_FLAPS = 0;
+const int TAKEOFF_FLAPS = 1;
+const int FULL_FLAPS = 2;
+
 //X-Plane Debugging Window
 static XPLMWindowID	gWindow = NULL;
 static char gTempBuffer[256];
@@ -41,6 +47,7 @@ XPLMDataRef _ignitionPositionDataref = NULL;
 XPLMDataRef _igniterStateDataref = NULL;
 
 //X-Plane ParamRefs
+XPLMDataRef _flapSwitchPositionDataref = NULL;
 XPLMDataRef _flapsPositionDataref = NULL;
 XPLMDataRef _trimPositionDataref = NULL;
 XPLMDataRef _indicatedAirspeedDataref = NULL;
@@ -148,6 +155,7 @@ PLUGIN_API void XPluginDisable(void)
 	_trimPositionDataref	= NULL;
 	_indicatedAirspeedDataref = NULL;
 	_flapsPositionDataref	= NULL;
+	_flapSwitchPositionDataref = NULL;
 
 	/*------Controls--------*/
 	_throttleRatioDataref	= NULL;
@@ -213,13 +221,13 @@ PLUGIN_API int XPluginEnable(void)
 
 
 	// Debugging display window
-	gWindow = XPLMCreateWindow(
-		50, 600, 400, 500,			/* Area of the window. */
-		1,							/* Start visible. */
-		MyDrawWindowCallback,		/* Callbacks */
-		MyHandleKeyCallback,
-		MyHandleMouseClickCallback,
-		NULL);						/* Refcon - not used. */
+// 	gWindow = XPLMCreateWindow(
+// 		50, 600, 400, 500,			/* Area of the window. */
+// 		1,							/* Start visible. */
+// 		MyDrawWindowCallback,		/* Callbacks */
+// 		MyHandleKeyCallback,
+// 		MyHandleMouseClickCallback,
+// 		NULL);						/* Refcon - not used. */
 	return 1;
 }
 
@@ -264,6 +272,7 @@ void ArduinoDataRefs()
 	_trimPositionDataref		= XPLMFindDataRef("sim/flightmodel/controls/elv_trim");
 	_indicatedAirspeedDataref	= XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed");
 	_flapsPositionDataref		= XPLMFindDataRef("sim/flightmodel/controls/flaprat");
+	_flapSwitchPositionDataref	= XPLMFindDataRef("sim/flightmodel/controls/flaprqst");
 	
 	/*-----  Controls  -----*/
 	_throttleRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
@@ -350,15 +359,15 @@ float	ArduinoFlightLoopCallback(
 	}
 
 	//Update x-plane update frequency
-	float ElapsedTimeDifference = (inElapsedTimeSinceLastFlightLoop - PreviousElapsedTimeSinceLastFlightLoop);
-	float UpdateFrequency = (1.0f / ElapsedTimeDifference);
-	sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f",UpdateFrequency);
-	PreviousElapsedTimeSinceLastFlightLoop = inElapsedTimeSinceLastFlightLoop;
+	//float ElapsedTimeDifference = (inElapsedTimeSinceLastFlightLoop - PreviousElapsedTimeSinceLastFlightLoop);
+	//float UpdateFrequency = (1.0f / ElapsedTimeDifference);
+	//sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f",UpdateFrequency);
+	//PreviousElapsedTimeSinceLastFlightLoop = inElapsedTimeSinceLastFlightLoop;
 
 	//Read bytes from Arduino
 	if ( _arduino->RecvCurrentState(&currentState) )
 	{
-		sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, CBStates #%d", UpdateFrequency, currentState.cbStates);
+		//sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, CBStates #%d", UpdateFrequency, currentState.cbStates);
 		
 		//If buffer was properly filled, update states
 		UpdateStates();
@@ -483,12 +492,21 @@ void update_switches()
 	{
 		XPLMSetDatavi(_ignitionPositionDataref,&ignitionPos,0,1);
 		lastState.ignitionPos = (UINT8)ignitionPos;
-	}
+	}//if
 	if (lastState.igniterState != (UINT8)igniterState)
 	{
-		XPLMSetDatavi(_igniterStateDataref,&igniterState,0,1);
+		//XPLMSetDatavi(_igniterStateDataref,&igniterState,0,1);
+		if (igniterState)
+		{
+			XPLMCommandButtonPress(xplm_joy_start_0);
+		}
+		else
+		{
+			XPLMCommandButtonRelease(xplm_joy_start_0);
+		}
+
 		lastState.igniterState = (UINT8)igniterState;
-	}
+	}//if
 
 	iStateChanges = currentState.switchStates ^ lastState.switchStates;
 	
@@ -497,56 +515,56 @@ void update_switches()
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_FUELPUMP_ON));
 		XPLMSetDatavi(_fuelPumpDataref,&entry,0,1);
-	}
+	}//if
 
 	//Change state of Strobe light
 	if ( iStateChanges & SWITCHES_STROBELIGHT_ON)
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_STROBELIGHT_ON));
 		XPLMSetDatai(_strobeLightDataref,entry);
-	}
+	}//if
 
 	//Change state of landing light
 	if ( iStateChanges & SWITCHES_LANDINGLIGHT_ON)
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_LANDINGLIGHT_ON));
 		XPLMSetDatai(_landingLightDataref,entry);
-	}
+	}//if
 
 	//Change state of taxi light
 	if ( iStateChanges & SWITCHES_TAXILIGHT_ON)
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_TAXILIGHT_ON));
 		XPLMSetDatai(_taxiLightDataref,entry);
-	}
+	}//if
 
 	//Change state of position light
 	if ( iStateChanges & SWITCHES_NAVLIGHT_ON)
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_NAVLIGHT_ON));
 		XPLMSetDatai(_navLightDataref,entry);
-	}
+	}//if
 
 	//Change state of avionics master
 	if ( iStateChanges & SWITCHES_AVIONICSMASTER_ON)
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_AVIONICSMASTER_ON));
 		XPLMSetDatai(_avionicsMasterDataref,entry);
-	}
+	}//if
 
 	//Change state of generator for engine 1
 	if ( iStateChanges & SWITCHES_GENERATOR_ON)
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_GENERATOR_ON));
 		XPLMSetDatavi(_generatorDataref,&entry,0,1);
-	}
+	}//if
 
 	//Change state of battery
 	if ( iStateChanges & SWITCHES_BATTERY_ON)
 	{
 		entry = (0 != (currentState.switchStates & SWITCHES_BATTERY_ON));
 		XPLMSetDatai(_batteryDataref,entry);
-	}
+	}//if
 
 	//Trim Up Button pressed (holding button does not cause continuous increase)
 	if (currentState.trimSwitchPos == 1 && lastState.trimSwitchPos == 0)
@@ -556,7 +574,7 @@ void update_switches()
 	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 1)
 	{
 		lastState.trimSwitchPos = 0;
-	}
+	}//if
 
 	//Trim Dn Button pressed (holding button does not cause continuous decrease)
 	if (currentState.trimSwitchPos == 2 && lastState.trimSwitchPos == 0)
@@ -566,7 +584,23 @@ void update_switches()
 	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 2)
 	{
 		lastState.trimSwitchPos = 0;
-	}
+	}//if
+
+	//Update flap position switch
+	if (currentState.flapSwitchPos != lastState.flapSwitchPos )
+	{
+		float f_flapRatio = 0.0f;
+		switch (currentState.flapSwitchPos)
+		{
+			case TAKEOFF_FLAPS:
+				f_flapRatio = TAKEOFF_FLAPS_RATIO;
+				break;
+			case FULL_FLAPS:
+				f_flapRatio = 1.0f;
+				break;
+		} //Switch
+		XPLMSetDataf(_flapSwitchPositionDataref,f_flapRatio);
+	} //if
 
 	//Update bitwise points for switches
 	lastState.switchStates = currentState.switchStates;
@@ -578,7 +612,7 @@ void update_switches()
 void update_circuit_breakers()
 {
 	//Go through circuit breakers updating (if needed) status of failure
-	//Note: in xplane, proper value is value = 6 (immediate failure)
+	//Note: in x plane, proper value is value = 6 (immediate failure)
 	//      Need to set value = 6 * entry (ie = 0 or 6)
 	static int ForceCBUpdateCounter = 0;
 	int entry = 0;
@@ -797,7 +831,7 @@ void update_trim_position(float trimIncrement)
 	}
 }
 
-//Send command to arduino to update flaps position display
+//Send command to Arduino to update flaps position display
 void update_flaps_display()
 {
 	//Want value 0 - 255
@@ -806,13 +840,13 @@ void update_flaps_display()
 	_arduino->SendState(FLAPS_DISPLAY,flapsRatio);
 }
 
-//Send command to arduino to update trim tab display
+//Send command to Arduino to update trim tab display
 void update_trim_display()
 {
 	int trimValue = 0;
 
-	//Want value 0 - 255
-	trimValue = (int) (255 * (_trimPosition - MIN_TRIM_DEFLECTION) / (MAX_TRIM_DEFLECTION-MIN_TRIM_DEFLECTION));
+	//Want value 0 - 63 (Trim has max VDC ~ 1.25 VDC)
+	trimValue = (int) (63 * (_trimPosition - MIN_TRIM_DEFLECTION) / (MAX_TRIM_DEFLECTION-MIN_TRIM_DEFLECTION));
 
 	_arduino->SendState(TRIM_DISPLAY,trimValue);
 }
