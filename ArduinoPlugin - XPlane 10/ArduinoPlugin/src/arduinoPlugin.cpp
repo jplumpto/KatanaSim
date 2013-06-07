@@ -4,11 +4,12 @@ ArduinoStates currentState;
 ArduinoStates lastState;
 XmlConfig *configFile;
 float MAX_PROP_SPEED_RADS = 2550;
-float IDLE_PROP_SPEED_RADS = 0;
+float MIN_PROP_SPEED_RADS = 0;
 float PROP_SPEED_RANGE_RADS = 0;
 const float MAX_TRIM_DEFLECTION = 0.5f;
 const float MIN_TRIM_DEFLECTION = -0.5f;
 const float MAX_AIRSPEED = 120.0f;
+int _iLoopCalls = 0;
 
 //Flap Constants
 const float TAKEOFF_FLAPS_RATIO = 0.375f;
@@ -51,13 +52,14 @@ XPLMDataRef _flapSwitchPositionDataref = NULL;
 XPLMDataRef _flapsPositionDataref = NULL;
 XPLMDataRef _trimPositionDataref = NULL;
 XPLMDataRef _indicatedAirspeedDataref = NULL;
+XPLMDataRef _busVoltsDataref = NULL;
 
 //X-Plane Control Refs
 XPLMDataRef _throttleRatioDataref = NULL;
 XPLMDataRef _pitchControlRatioDataref = NULL;
 XPLMDataRef _rollControlRatioDataref = NULL;
 XPLMDataRef _yawControlRatioDataref = NULL;
-XPLMDataRef _propSpeedRatioDataref = NULL;
+XPLMDataRef _commandedPropSpeedDataref = NULL;
 XPLMDataRef _leftBrakeRatioDataref = NULL;
 XPLMDataRef _rightBrakeRatioDataref = NULL;
 XPLMDataRef _carbHeatRatioDataref = NULL;
@@ -65,7 +67,7 @@ XPLMDataRef _parkingBrakeRatioDataref = NULL;
 
 //X-Plane Prop Refs
 XPLMDataRef _maxPropSpeedDataref = NULL;
-XPLMDataRef _idlePropSpeedDataref = NULL;
+XPLMDataRef _minPropSpeedDataref = NULL;
 
 #pragma region CircuitBreakerDatarefs
 XPLMDataRef _cb1Datarefs[2];
@@ -156,10 +158,11 @@ PLUGIN_API void XPluginDisable(void)
 	_indicatedAirspeedDataref = NULL;
 	_flapsPositionDataref	= NULL;
 	_flapSwitchPositionDataref = NULL;
+	_busVoltsDataref = NULL;
 
 	/*------Controls--------*/
 	_throttleRatioDataref	= NULL;
-	_propSpeedRatioDataref	= NULL;
+	_commandedPropSpeedDataref	= NULL;
 	_pitchControlRatioDataref = NULL;
 	_rollControlRatioDataref = NULL;
 	_yawControlRatioDataref	= NULL;
@@ -241,8 +244,8 @@ void InitializeStateMemory()
 
 	//Get current states to update components
 	MAX_PROP_SPEED_RADS = XPLMGetDataf(_maxPropSpeedDataref);
-	IDLE_PROP_SPEED_RADS = XPLMGetDataf(_idlePropSpeedDataref);
-	PROP_SPEED_RANGE_RADS = MAX_PROP_SPEED_RADS - IDLE_PROP_SPEED_RADS;
+	MIN_PROP_SPEED_RADS = XPLMGetDataf(_minPropSpeedDataref);
+	PROP_SPEED_RANGE_RADS = MAX_PROP_SPEED_RADS - MIN_PROP_SPEED_RADS;
 	_trimPosition = XPLMGetDataf(_trimPositionDataref);
 	_airspeed = XPLMGetDataf(_indicatedAirspeedDataref);
 	update_trim_display();
@@ -273,11 +276,12 @@ void ArduinoDataRefs()
 	_indicatedAirspeedDataref	= XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed");
 	_flapsPositionDataref		= XPLMFindDataRef("sim/flightmodel/controls/flaprat");
 	_flapSwitchPositionDataref	= XPLMFindDataRef("sim/flightmodel/controls/flaprqst");
+	_busVoltsDataref			= XPLMFindDataRef("sim/cockpit2/electrical/bus_volts");
 	
 	/*-----  Controls  -----*/
 	_throttleRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
-	//_propSpeedRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_prop");
-	_propSpeedRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_mixt"); //Apparently uses mixture
+	_commandedPropSpeedDataref	= XPLMFindDataRef("sim/flightmodel/engine/ENGN_prop");
+	//_commandedPropSpeedDataref	= XPLMFindDataRef("sim/flightmodel/engine/ENGN_mixt"); //Apparently uses mixture
 	_pitchControlRatioDataref	= XPLMFindDataRef("sim/joystick/yoke_pitch_ratio");
 	_rollControlRatioDataref	= XPLMFindDataRef("sim/joystick/yoke_roll_ratio");
 	_yawControlRatioDataref		= XPLMFindDataRef("sim/joystick/yoke_heading_ratio");
@@ -288,7 +292,7 @@ void ArduinoDataRefs()
 
 	/* ------Prop Speed Refs ------------ */
 	_maxPropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_redline_prp");
-	_idlePropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_idlespeed_prp");
+	_minPropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_mingov_prp");
 
 	init_circuit_breaker_datarefs();
 }
@@ -348,6 +352,14 @@ float	ArduinoFlightLoopCallback(
 	//Ensure that the Arduino is sending updated states
 	if (!_updating)
 	{
+		//Get current states to update components
+		MAX_PROP_SPEED_RADS = XPLMGetDataf(_maxPropSpeedDataref);
+		MIN_PROP_SPEED_RADS = XPLMGetDataf(_minPropSpeedDataref);
+		PROP_SPEED_RANGE_RADS = MAX_PROP_SPEED_RADS - MIN_PROP_SPEED_RADS;
+		_trimPosition = XPLMGetDataf(_trimPositionDataref);
+		_airspeed = XPLMGetDataf(_indicatedAirspeedDataref);
+		update_trim_display();
+
 		if (_arduino->Initiate())
 		{
 			_updating = TRUE;
@@ -356,6 +368,7 @@ float	ArduinoFlightLoopCallback(
 		{
 			return 2.0f;
 		}
+
 	}
 
 	//Update x-plane update frequency
@@ -368,6 +381,7 @@ float	ArduinoFlightLoopCallback(
 	if ( _arduino->RecvCurrentState(&currentState) )
 	{
 		//sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, CBStates #%d", UpdateFrequency, currentState.cbStates);
+		_iLoopCalls = inCounter;
 		
 		//If buffer was properly filled, update states
 		UpdateStates();
@@ -402,9 +416,11 @@ void UpdateStates()
 	
 
 	//Every X cycles, update fan speed
-	if (XPLMGetCycleNumber() % 5000 == 0)
+	if (_iLoopCalls % 250 == 0)
 	{
 		update_ventilation_speed();
+		_trimPosition = XPLMGetDataf(_trimPositionDataref);
+		update_trim_display();
 	}
 }
 #pragma region ControlInputs
@@ -431,12 +447,12 @@ void update_controls()
 	carbHeat = invert_control(carbHeat,1,configFile->CarbHeatInvert);
 
 	/* Propeller Speed needs to be converted from ratio to rad/s */ //Point_tacrad
-	//float propSpeed = propSpeedRatio * PROP_SPEED_RANGE_RADS + IDLE_PROP_SPEED_RADS;
+	float propSpeed = propSpeedRatio * PROP_SPEED_RANGE_RADS + MIN_PROP_SPEED_RADS;
 
 	/* Update controls */
 	XPLMSetDatavf(_throttleRatioDataref,&throttle,0,1);
 	XPLMSetDatavf(_carbHeatRatioDataref,&carbHeat,0,1);
-	XPLMSetDatavf(_propSpeedRatioDataref,&propSpeedRatio,0,1);
+	XPLMSetDatavf(_commandedPropSpeedDataref,&propSpeed,0,1);
 	XPLMSetDataf(_pitchControlRatioDataref,pitch);
 	XPLMSetDataf(_rollControlRatioDataref,roll);
 	XPLMSetDataf(_yawControlRatioDataref,yaw);
@@ -483,6 +499,12 @@ void update_switches()
 		lastState.flapSwitchPos = (UINT8) 4;
 		ForceSwitchUpdateCounter = 0; // Reset counter
 	} //else if
+
+	// Update flaps display every 5 calls (roughly 10-12 Hz)
+	if ( ForceSwitchUpdateCounter % 5 == 0)
+	{
+		update_flaps_display();
+	} //if
 
 	/* Starter Switch */
 	int ignitionPos = currentState.ignitionPos;
@@ -618,8 +640,8 @@ void update_circuit_breakers()
 	int entry = 0;
 	int iStateChanges = lastState.cbStates ^ currentState.cbStates;
 
-	//Force update once every 100 calls 
-	if (ForceCBUpdateCounter == 100)
+	//Force update once every 20 calls 
+	if (ForceCBUpdateCounter == 20)
 	{
 		//Toggle values to force update
 		//lastState.cbStates = ~currentState.cbStates;
@@ -658,7 +680,7 @@ void update_circuit_breakers()
 	}
 
 	//CB#5
-	if ((iStateChanges & (1 << 4))  || (ForceCBUpdateCounter == 25) )
+	if ((iStateChanges & (1 << 4))  || (ForceCBUpdateCounter == 5) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 4)));
 		XPLMSetDatai(_cb5Dataref, 6 * entry );
@@ -672,63 +694,63 @@ void update_circuit_breakers()
 	//}
 
 	//CB#7
-	if ((iStateChanges & (1 << 6))  || (ForceCBUpdateCounter == 25) )
+	if ((iStateChanges & (1 << 6))  || (ForceCBUpdateCounter == 5) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 6)));
 		XPLMSetDatai(_cb7Dataref, 6 * entry );
 	}
 
 	//CB#8
-	if ((iStateChanges & (1 << 7))  || (ForceCBUpdateCounter == 25) )
+	if ((iStateChanges & (1 << 7))  || (ForceCBUpdateCounter == 5) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 7)));
 		XPLMSetDatai(_cb8Dataref, 6 * entry );
 	}
 
 	//CB#9
-	if ((iStateChanges & (1 << 8))  || (ForceCBUpdateCounter == 25) )
+	if ((iStateChanges & (1 << 8))  || (ForceCBUpdateCounter == 5) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 8)));
 		XPLMSetDatai(_cb9Dataref, 6 * entry );
 	}
 
 	//CB#10
-	if ((iStateChanges & (1 << 9))  || (ForceCBUpdateCounter == 25) )
+	if ((iStateChanges & (1 << 9))  || (ForceCBUpdateCounter == 5) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 9)));
 		XPLMSetDatai(_cb10Dataref, 6 * entry );
 	}
 
 	//CB#11 
-	if ((iStateChanges & (1 << 10))  || (ForceCBUpdateCounter == 25) )
+	if ((iStateChanges & (1 << 10))  || (ForceCBUpdateCounter == 5) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 10)));
 		XPLMSetDatai(_cb11Dataref, 6 * entry );
 	}
 
 	//CB#12 - Battery
-	if ((iStateChanges & (1 << 11))  || (ForceCBUpdateCounter == 25) )
+	if ((iStateChanges & (1 << 11))  || (ForceCBUpdateCounter == 5) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 11)));
 		XPLMSetDatai(_cb12Dataref, 6 * entry );
 	}
 
 	//CB#13
-	if ((iStateChanges & (1 << 12))  || (ForceCBUpdateCounter == 50) )
+	if ((iStateChanges & (1 << 12))  || (ForceCBUpdateCounter == 10) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 12)));
 		XPLMSetDatai(_cb13Dataref, 6 * entry );
 	}
 
 	//CB#14
-	if ((iStateChanges & (1 << 13))  || (ForceCBUpdateCounter == 50) )
+	if ((iStateChanges & (1 << 13))  || (ForceCBUpdateCounter == 10) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 13)));
 		XPLMSetDatai(_cb14Dataref, 6 * entry );
 	}
 
 	//CB#15
-	if ((iStateChanges & (1 << 14))  || (ForceCBUpdateCounter == 50) )
+	if ((iStateChanges & (1 << 14))  || (ForceCBUpdateCounter == 10) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 14)));
 		XPLMSetDatai(_cb15Dataref, 6 * entry );
@@ -744,7 +766,7 @@ void update_circuit_breakers()
 	}*/
 	
 	//CB#17
-	if ((iStateChanges & (1 << 16))  || (ForceCBUpdateCounter == 50) )
+	if ((iStateChanges & (1 << 16))  || (ForceCBUpdateCounter == 10) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 16)));
 		XPLMSetDatai(_cb17Dataref, 6 * entry );
@@ -752,35 +774,35 @@ void update_circuit_breakers()
 	
 	
 	//CB#18
-	if ((iStateChanges & (1 << 17))  || (ForceCBUpdateCounter == 50) )
+	if ((iStateChanges & (1 << 17))  || (ForceCBUpdateCounter == 10) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 17)));
 		XPLMSetDatai(_cb18Dataref, 6 * entry );
 	}
 	
 	//CB#19
-	if ((iStateChanges & (1 << 18))  || (ForceCBUpdateCounter == 50) )
+	if ((iStateChanges & (1 << 18))  || (ForceCBUpdateCounter == 10) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 18)));
 		XPLMSetDatai(_cb19Dataref, 6 * entry );
 	}
 	
 	//CB#20
-	if ((iStateChanges & (1 << 19))  || (ForceCBUpdateCounter == 75) )
+	if ((iStateChanges & (1 << 19))  || (ForceCBUpdateCounter == 15) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 19)));
 		XPLMSetDatai(_cb20Dataref, 6 * entry );
 	}
 
 	//CB#21
-	if ((iStateChanges & (1 << 20))  || (ForceCBUpdateCounter == 75) )
+	if ((iStateChanges & (1 << 20))  || (ForceCBUpdateCounter == 15) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 20)));
 		XPLMSetDatai(_cb21Dataref, 6 * entry );
 	}
 
 	//CB#22
-	if ((iStateChanges & (1 << 21))  || (ForceCBUpdateCounter == 75) )
+	if ((iStateChanges & (1 << 21))  || (ForceCBUpdateCounter == 15) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 21)));
 		XPLMSetDatai(_cb22Dataref, 6 * entry );
@@ -793,20 +815,20 @@ void update_circuit_breakers()
 	}*/
 
 	//CB#24
-	if ((iStateChanges & (1 << 23))  || (ForceCBUpdateCounter == 75) )
+	if ((iStateChanges & (1 << 23))  || (ForceCBUpdateCounter == 15) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 23)));
 		XPLMSetDatai(_cb24Dataref, 6 * entry );
 	}
 	//CB#25
-	if ((iStateChanges & (1 << 24))  || (ForceCBUpdateCounter == 75) )
+	if ((iStateChanges & (1 << 24))  || (ForceCBUpdateCounter == 15) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 24)));
 		XPLMSetDatai(_cb25Dataref, 6 * entry );
 	}
 
 	//CB#26
-	if ((iStateChanges & (1 << 25))  || (ForceCBUpdateCounter == 75) )
+	if ((iStateChanges & (1 << 25))  || (ForceCBUpdateCounter == 15) )
 	{
 		entry = (0 != (currentState.cbStates & (1 << 25)));
 		XPLMSetDatai(_cb26Dataref, 6 * entry );
@@ -834,19 +856,57 @@ void update_trim_position(float trimIncrement)
 //Send command to Arduino to update flaps position display
 void update_flaps_display()
 {
-	//Want value 0 - 255
-	int flapsRatio = (int) ( 255 * XPLMGetDataf(_flapsPositionDataref) );
+	static const float f_flapsDisplayTolerance = 0.05f;
+	float f_flapsRatio = XPLMGetDataf(_flapsPositionDataref);
+	float f_busVolts = 0;
+	XPLMGetDatavf(_busVoltsDataref,&f_busVolts,0,1);
 
-	_arduino->SendState(FLAPS_DISPLAY,flapsRatio);
+	// If voltage is too low (gen and batt fail) then light should be off
+	if (f_busVolts < 10.0)
+	{
+		_arduino->SendState(FLAPS_DISPLAY,0);
+		return;
+	}
+
+	//No Flaps when ratio less than f_flapsDisplayTolerance
+	if (f_flapsRatio <= f_flapsDisplayTolerance)
+	{
+		_arduino->SendState(FLAPS_DISPLAY,15);
+	} 
+	else if (f_flapsRatio <= TAKEOFF_FLAPS_RATIO - 2 * f_flapsDisplayTolerance) //Transition until TAKEOFF_FLAPS_RATIO - f_flapsDisplayTolerance
+	{
+		_arduino->SendState(FLAPS_DISPLAY,18);
+	}
+	else if (f_flapsRatio <= TAKEOFF_FLAPS_RATIO + f_flapsDisplayTolerance) //Takeoff flaps
+	{
+		_arduino->SendState(FLAPS_DISPLAY,28);
+	} 
+	else if (f_flapsRatio <= 1.0f - f_flapsDisplayTolerance) //Transition
+	{
+		_arduino->SendState(FLAPS_DISPLAY,35);
+	}
+	else //Full flaps
+	{
+		_arduino->SendState(FLAPS_DISPLAY,45);
+	} //if
 }
 
 //Send command to Arduino to update trim tab display
 void update_trim_display()
 {
 	int trimValue = 0;
+	float f_busVolts = 0;
+	XPLMGetDatavf(_busVoltsDataref,&f_busVolts,0,1);
+
+	// If voltage is too low (gen and batt fail) then light should be off
+	if (f_busVolts < 10.0)
+	{
+		_arduino->SendState(TRIM_DISPLAY,100);
+		return;
+	}
 
 	//Want value 0 - 63 (Trim has max VDC ~ 1.25 VDC)
-	trimValue = (int) (63 * (_trimPosition - MIN_TRIM_DEFLECTION) / (MAX_TRIM_DEFLECTION-MIN_TRIM_DEFLECTION));
+	trimValue = (int) (63 * (-_trimPosition - MIN_TRIM_DEFLECTION) / (MAX_TRIM_DEFLECTION-MIN_TRIM_DEFLECTION));
 
 	_arduino->SendState(TRIM_DISPLAY,trimValue);
 }
@@ -906,7 +966,7 @@ void init_circuit_breaker_datarefs()
 	_cb6Dataref		= XPLMFindDataRef("sim/operation/failures/rel_clights");
 	_cb7Dataref		= XPLMFindDataRef("sim/operation/failures/rel_lites_nav");
 	_cb8Dataref		= XPLMFindDataRef("sim/operation/failures/rel_lites_strobe");
-	_cb9Dataref		= XPLMFindDataRef("sim/operation/failures/rel_start0");
+	_cb9Dataref		= XPLMFindDataRef("sim/operation/failures/rel_startr0");
 	_cb10Dataref	= XPLMFindDataRef("sim/operation/failures/rel_genera0"); //-----------NEED TO FIND SOMETHING TO FAIL!!!!
 	_cb11Dataref	= XPLMFindDataRef("sim/operation/failures/rel_genera0");
 	_cb12Dataref	= XPLMFindDataRef("sim/operation/failures/rel_batter0");
