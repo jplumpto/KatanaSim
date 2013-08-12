@@ -146,3 +146,46 @@ void update_stall_warning(char *buff)
   } 
 }
 
+//Update the generator annunciator warning
+void update_generator_warning(char *buff)
+{
+  int val;
+  
+  success = sscanf(buff, "%d", &val);
+  
+  if (success == 0)
+  {
+    return;
+  }
+  
+  if ( val == 1 )
+  {
+    digitalWrite(generatorWarningPin,HIGH);
+  } //if
+  else
+  {
+    digitalWrite(generatorWarningPin,LOW);
+  }
+}
+
+//Update the fuel pressure annunciator warning
+void update_fuel_pressure_warning(char *buff)
+{
+  int val;
+  
+  success = sscanf(buff, "%d", &val);
+  
+  if (success == 0)
+  {
+    return;
+  }
+  
+  if ( val == 1 )
+  {
+    digitalWrite(fuelPressureWarningPin,HIGH);
+  } //if
+  else
+  {
+    digitalWrite(fuelPressureWarningPin,LOW);
+  }
+}

@@ -23,6 +23,8 @@
 #define TRIM_DISPLAY 0
 #define FLAPS_DISPLAY 1
 #define FAN_SPEED 2
+#define GENERATOR_WARNING 3
+#define FUEL_PRESSURE_WARNING 4
 
 const UINT8 SWITCHES_CLEAR             =   0;   // 0x00000000
 const UINT8 SWITCHES_FUELPUMP_ON       =   1;   // 0x00000001

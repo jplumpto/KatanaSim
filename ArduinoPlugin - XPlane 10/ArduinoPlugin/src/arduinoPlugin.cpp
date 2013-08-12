@@ -69,6 +69,10 @@ XPLMDataRef _parkingBrakeRatioDataref = NULL;
 XPLMDataRef _maxPropSpeedDataref = NULL;
 XPLMDataRef _minPropSpeedDataref = NULL;
 
+//X-Plane Annunciator datarefs
+XPLMDataRef _generatorWarningDataref = NULL;
+XPLMDataRef _fuelPressureWarningDataref = NULL;
+
 #pragma region CircuitBreakerDatarefs
 XPLMDataRef _cb1Datarefs[2];
 XPLMDataRef _cb2Datarefs[3];
@@ -170,6 +174,10 @@ PLUGIN_API void XPluginDisable(void)
 	_rightBrakeRatioDataref	= NULL;
 	_carbHeatRatioDataref	= NULL;
 	_parkingBrakeRatioDataref = NULL;
+
+	// Annunciators
+	_generatorDataref = NULL;
+	_fuelPressureWarningDataref = NULL;
 
 	XPLMUnregisterFlightLoopCallback(ArduinoFlightLoopCallback, NULL);
 	delete _arduino;
@@ -294,6 +302,10 @@ void ArduinoDataRefs()
 	_maxPropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_redline_prp");
 	_minPropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_mingov_prp");
 
+	/* -------- Annunciator ------------- */
+	_generatorDataref			= XPLMFindDataRef("sim/cockpit/warnings/annunciators/generator");
+	_fuelPressureWarningDataref = XPLMFindDataRef("sim/cockpit/warnings/annunciators/fuel_pressure");
+
 	init_circuit_breaker_datarefs();
 }
 
@@ -363,6 +375,7 @@ float	ArduinoFlightLoopCallback(
 		if (_arduino->Initiate())
 		{
 			_updating = TRUE;
+			_iLoopCalls = 0;
 			return -1;
 		} else 
 		{
@@ -381,7 +394,7 @@ float	ArduinoFlightLoopCallback(
 	if ( _arduino->RecvCurrentState(&currentState) )
 	{
 		//sprintf_s(gTempBuffer, 256, "Local Hz = %0.2f, CBStates #%d", UpdateFrequency, currentState.cbStates);
-		_iLoopCalls = inCounter;
+		_iLoopCalls++;
 		
 		//If buffer was properly filled, update states
 		UpdateStates();
@@ -414,13 +427,19 @@ void UpdateStates()
 		update_circuit_breakers();
 	}//else
 	
+	//Every 50 cycles, update annunciators
+	if ( _iLoopCalls % 50 == 0)
+	{
+		update_annunciators();
+	}
 
 	//Every X cycles, update fan speed
-	if (_iLoopCalls % 250 == 0)
+	if (_iLoopCalls == 250)
 	{
 		update_ventilation_speed();
 		_trimPosition = XPLMGetDataf(_trimPositionDataref);
 		update_trim_display();
+		_iLoopCalls = 0;
 	}
 }
 #pragma region ControlInputs
@@ -889,6 +908,20 @@ void update_flaps_display()
 	{
 		_arduino->SendState(FLAPS_DISPLAY,45);
 	} //if
+}
+
+// Update Annunciators
+void update_annunciators()
+{
+	int annunciatorState = 0;
+
+	// Update Generator Annunciator Warning
+	annunciatorState = XPLMGetDatai(_generatorWarningDataref) > 0 ? 1 : 0;
+	_arduino->SendState(GENERATOR_WARNING,annunciatorState);
+
+	// Update Fuel Pressure Annunciator Warning
+	annunciatorState = XPLMGetDatai(_fuelPressureWarningDataref) > 0 ? 1 : 0;
+	_arduino->SendState(FUEL_PRESSURE_WARNING,annunciatorState);
 }
 
 //Send command to Arduino to update trim tab display

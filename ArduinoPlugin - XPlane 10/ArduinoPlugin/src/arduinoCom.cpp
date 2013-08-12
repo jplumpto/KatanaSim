@@ -56,7 +56,13 @@ void ArduinoCom::SendState(int updatingState, int value)
 		sprintf_s(sBuf,25,"F:%d;",value);
 		break;
 	case FAN_SPEED:
-		sprintf_s(sBuf,25,"F:%d;",value);
+		sprintf_s(sBuf,25,"V:%d;",value);
+		break;
+	case GENERATOR_WARNING:
+		sprintf_s(sBuf,25,"G:%d;",value);
+		break;
+	case FUEL_PRESSURE_WARNING:
+		sprintf_s(sBuf,25,"P:%d;",value);
 		break;
 	default: //Not a command Arduino recognises
 		return;

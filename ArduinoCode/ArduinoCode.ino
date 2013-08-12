@@ -5,7 +5,7 @@
  For calibration, sends string of control inputs.
  For xplaneplugin, sends uint8_ts of all states. 
  
- Updated: April 16, 2013
+ Updated: August 12, 2013
  
  */
 //#include <Wire.h>
@@ -60,7 +60,7 @@ struct ArduinoStates {
 }; //ArduinoStates structure
 
 String currCmd = "\0";
-String updateDate = "April 16, 2013";
+String updateDate = "August 12, 2013";
 int  updateXplane = 0;
 int delayLength = 0;
 unsigned long lastTime = 0;
@@ -107,6 +107,9 @@ const int trimDownPin = 3;
 const int flapsUpPin = 16;
 const int flapsFullPin = 18;
 
+const int generatorWarningPin = 19;
+const int fuelPressureWarningPin = 20;
+
 //Functions
 void * create_state();
 void update_controls();
@@ -119,6 +122,8 @@ void update_ventilation_speed(char *buff);
 void update_trim_display(char *buff);
 void update_flaps_display(char *buff);
 void update_stall_warning(char *buff);
+void update_generator_warning(char *buff);
+void update_fuel_pressure_warning(char *buff);
 void random_test();
 void snprintSwitches(char *buff, int maxChars);
 
@@ -134,6 +139,8 @@ void setup() {
   
   pinMode(fanPin,OUTPUT);
   pinMode(trimTabPin,OUTPUT);
+  pinMode(generatorWarningPin,OUTPUT);
+  pinMode(fuelPressureWarningPin,OUTPUT);
 }
 
 
@@ -242,6 +249,48 @@ void loop() {
           buff[i] = '\0';
           
           update_flaps_display(buff);
+        } //if
+        
+      }else if (action == "G")  //Updates the Generator Annunciator Warning
+      {
+        //currCmd = "G:%d;"; // where %d is 0 or 1
+
+        int i = 0;
+        int j = 2;
+        int length = currCmd.length();
+        
+        if ( currCmd[1] == ':')
+        {
+          for (i = 0, j = 2; j < length - 1; i++, j++)
+          {
+            buff[i] = currCmd[j];
+            
+          }  // for
+          
+          buff[i] = '\0';
+          
+          update_flaps_display(buff);
+        } //if
+        
+      }else if (action == "P")  //Updates the Fuel Pressure Annunciator Warning
+      {
+        //currCmd = "P:%d;"; // where %d is 0 or 1
+
+        int i = 0;
+        int j = 2;
+        int length = currCmd.length();
+        
+        if ( currCmd[1] == ':')
+        {
+          for (i = 0, j = 2; j < length - 1; i++, j++)
+          {
+            buff[i] = currCmd[j];
+            
+          }  // for
+          
+          buff[i] = '\0';
+          
+          update_fuel_pressure_warning(buff);
         } //if
         
       }else if (action == "S")  //Updates stall warning

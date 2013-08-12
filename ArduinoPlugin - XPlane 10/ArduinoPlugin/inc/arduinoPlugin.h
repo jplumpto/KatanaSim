@@ -31,6 +31,7 @@ void update_ventilation_speed();
 void update_trim_position(float trimIncrement);
 void update_trim_display();
 void update_flaps_display();
+void update_annunciators();
 void sleep();
 struct ArduinoStates create_states();
 
