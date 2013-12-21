@@ -6,8 +6,8 @@ XmlConfig *configFile;
 float MAX_PROP_SPEED_RADS = 2550;
 float MIN_PROP_SPEED_RADS = 0;
 float PROP_SPEED_RANGE_RADS = 0;
-const float MAX_TRIM_DEFLECTION = 0.5f;
-const float MIN_TRIM_DEFLECTION = -0.5f;
+float MAX_TRIM_DEFLECTION = 0.5f;
+float MIN_TRIM_DEFLECTION = -0.5f;
 const float MAX_AIRSPEED = 120.0f;
 int _iLoopCalls = 0;
 
@@ -53,6 +53,8 @@ XPLMDataRef _flapsPositionDataref = NULL;
 XPLMDataRef _trimPositionDataref = NULL;
 XPLMDataRef _indicatedAirspeedDataref = NULL;
 XPLMDataRef _busVoltsDataref = NULL;
+XPLMDataRef _maxTrimDataref = NULL;
+XPLMDataRef _minTrimDataref = NULL;
 
 //X-Plane Control Refs
 XPLMDataRef _throttleRatioDataref = NULL;
@@ -163,6 +165,8 @@ PLUGIN_API void XPluginDisable(void)
 	_flapsPositionDataref	= NULL;
 	_flapSwitchPositionDataref = NULL;
 	_busVoltsDataref = NULL;
+	_maxTrimDataref = NULL;
+	_minTrimDataref = NULL;
 
 	/*------Controls--------*/
 	_throttleRatioDataref	= NULL;
@@ -176,7 +180,7 @@ PLUGIN_API void XPluginDisable(void)
 	_parkingBrakeRatioDataref = NULL;
 
 	// Annunciators
-	_generatorDataref = NULL;
+	_generatorWarningDataref = NULL;
 	_fuelPressureWarningDataref = NULL;
 
 	XPLMUnregisterFlightLoopCallback(ArduinoFlightLoopCallback, NULL);
@@ -285,11 +289,12 @@ void ArduinoDataRefs()
 	_flapsPositionDataref		= XPLMFindDataRef("sim/flightmodel/controls/flaprat");
 	_flapSwitchPositionDataref	= XPLMFindDataRef("sim/flightmodel/controls/flaprqst");
 	_busVoltsDataref			= XPLMFindDataRef("sim/cockpit2/electrical/bus_volts");
+	_maxTrimDataref				= XPLMFindDataRef("sim/aircraft/controls/acf_max_trim_elev"); //Nose up
+	_minTrimDataref				= XPLMFindDataRef("sim/aircraft/controls/acf_min_trim_elev"); //Nose down
 	
 	/*-----  Controls  -----*/
 	_throttleRatioDataref		= XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
 	_commandedPropSpeedDataref	= XPLMFindDataRef("sim/flightmodel/engine/ENGN_prop");
-	//_commandedPropSpeedDataref	= XPLMFindDataRef("sim/flightmodel/engine/ENGN_mixt"); //Apparently uses mixture
 	_pitchControlRatioDataref	= XPLMFindDataRef("sim/joystick/yoke_pitch_ratio");
 	_rollControlRatioDataref	= XPLMFindDataRef("sim/joystick/yoke_roll_ratio");
 	_yawControlRatioDataref		= XPLMFindDataRef("sim/joystick/yoke_heading_ratio");
@@ -303,7 +308,7 @@ void ArduinoDataRefs()
 	_minPropSpeedDataref		= XPLMFindDataRef("sim/aircraft/controls/acf_RSC_mingov_prp");
 
 	/* -------- Annunciator ------------- */
-	_generatorDataref			= XPLMFindDataRef("sim/cockpit/warnings/annunciators/generator");
+	_generatorWarningDataref	= XPLMFindDataRef("sim/cockpit/warnings/annunciators/generator");
 	_fuelPressureWarningDataref = XPLMFindDataRef("sim/cockpit/warnings/annunciators/fuel_pressure");
 
 	init_circuit_breaker_datarefs();
@@ -454,6 +459,7 @@ void update_controls()
 	float lBrake = 1.0f * ( currentState.lBrake - configFile->LeftBrakeMin) / (configFile->LeftBrakeMax - configFile->LeftBrakeMin);
 	float rBrake = 1.0f * ( currentState.rBrake - configFile->RightBrakeMin) / (configFile->RightBrakeMax - configFile->RightBrakeMin);
 	float carbHeat = 1.0f * ( currentState.carbHeat - configFile->CarbHeatMin) / (configFile->CarbHeatMax - configFile->CarbHeatMin);
+	float parkBrake = 1.0f * (currentState.pBrake - configFile->ParkBrakeMin) / (configFile->ParkBrakeMax - configFile->ParkBrakeMin);
 
 	/* Correct for inverted values where needed  */
 	throttle = invert_control(throttle,1,configFile->ThrottleInvert);
@@ -464,6 +470,18 @@ void update_controls()
 	lBrake = invert_control(lBrake,1,configFile->LeftBrakeInvert);
 	rBrake = invert_control(rBrake,1,configFile->RightBrakeInvert);
 	carbHeat = invert_control(carbHeat,1,configFile->CarbHeatInvert);
+	
+	if ( carbHeat < 0.10f )
+	{
+		carbHeat = 0.0f;
+	}
+	
+	parkBrake = invert_control(parkBrake, 1, configFile->ParkBrakeInvert);
+
+	if ( parkBrake < 0.10f )
+	{
+		parkBrake = 0.0f;
+	}
 
 	/* Propeller Speed needs to be converted from ratio to rad/s */ //Point_tacrad
 	float propSpeed = propSpeedRatio * PROP_SPEED_RANGE_RADS + MIN_PROP_SPEED_RADS;
@@ -477,6 +495,7 @@ void update_controls()
 	XPLMSetDataf(_yawControlRatioDataref,yaw);
 	XPLMSetDataf(_leftBrakeRatioDataref,lBrake);
 	XPLMSetDataf(_rightBrakeRatioDataref,rBrake);
+	XPLMSetDataf(_parkingBrakeRatioDataref,parkBrake);
 }
 
 // Checks if input values need to be inverted (eg switch Left and Right), and returns value accordingly
@@ -610,7 +629,7 @@ void update_switches()
 	//Trim Up Button pressed (holding button does not cause continuous increase)
 	if (currentState.trimSwitchPos == 1 && lastState.trimSwitchPos == 0)
 	{
-		update_trim_position(0.05f);
+		update_trim_position(0.1f);
 		lastState.trimSwitchPos = 1;
 	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 1)
 	{
@@ -620,7 +639,7 @@ void update_switches()
 	//Trim Dn Button pressed (holding button does not cause continuous decrease)
 	if (currentState.trimSwitchPos == 2 && lastState.trimSwitchPos == 0)
 	{
-		update_trim_position(-0.05f);
+		update_trim_position(-0.1f);
 		lastState.trimSwitchPos = 2;
 	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 2)
 	{
@@ -861,10 +880,12 @@ void update_circuit_breakers()
 //Change trim state in X-Plane
 void update_trim_position(float trimIncrement)
 {
+	//Elevation Trim, -1 = max nose down, 1 = max nose up
 	float trim = _trimPosition + trimIncrement;
 
 	//Ensure change in trim can be made
-	if (MIN_TRIM_DEFLECTION <= trim && trim <= MAX_TRIM_DEFLECTION)
+	//if (MIN_TRIM_DEFLECTION <= trim && trim <= MAX_TRIM_DEFLECTION)
+	if ( -1 <= trim && trim <= 1 )
 	{
 		_trimPosition = trim;
 		XPLMSetDataf(_trimPositionDataref,_trimPosition);
@@ -916,11 +937,11 @@ void update_annunciators()
 	int annunciatorState = 0;
 
 	// Update Generator Annunciator Warning
-	annunciatorState = XPLMGetDatai(_generatorWarningDataref) > 0 ? 1 : 0;
+	annunciatorState = XPLMGetDatai(_generatorWarningDataref);
 	_arduino->SendState(GENERATOR_WARNING,annunciatorState);
 
 	// Update Fuel Pressure Annunciator Warning
-	annunciatorState = XPLMGetDatai(_fuelPressureWarningDataref) > 0 ? 1 : 0;
+	annunciatorState = XPLMGetDatai(_fuelPressureWarningDataref);
 	_arduino->SendState(FUEL_PRESSURE_WARNING,annunciatorState);
 }
 
@@ -934,7 +955,7 @@ void update_trim_display()
 	// If voltage is too low (gen and batt fail) then light should be off
 	if (f_busVolts < 10.0)
 	{
-		_arduino->SendState(TRIM_DISPLAY,100);
+		_arduino->SendState(TRIM_DISPLAY,0);
 		return;
 	}
 

@@ -150,6 +150,7 @@ void update_stall_warning(char *buff)
 void update_generator_warning(char *buff)
 {
   int val;
+  int success = 0;
   
   success = sscanf(buff, "%d", &val);
   
@@ -172,6 +173,7 @@ void update_generator_warning(char *buff)
 void update_fuel_pressure_warning(char *buff)
 {
   int val;
+  int success = 0;
   
   success = sscanf(buff, "%d", &val);
   
