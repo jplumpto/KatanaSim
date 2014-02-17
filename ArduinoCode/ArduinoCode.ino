@@ -5,7 +5,7 @@
  For calibration, sends string of control inputs.
  For xplaneplugin, sends uint8_ts of all states. 
  
- Updated: August 12, 2013
+ Updated: January 30, 2014
  
  */
 //#include <Wire.h>
@@ -60,7 +60,7 @@ struct ArduinoStates {
 }; //ArduinoStates structure
 
 String currCmd = "\0";
-String updateDate = "August 12, 2013";
+String updateDate = "January 30, 2014";
 int  updateXplane = 0;
 int delayLength = 0;
 unsigned long lastTime = 0;
@@ -269,7 +269,7 @@ void loop() {
           
           buff[i] = '\0';
           
-          update_flaps_display(buff);
+          update_generator_warning(buff);
         } //if
         
       }else if (action == "P")  //Updates the Fuel Pressure Annunciator Warning

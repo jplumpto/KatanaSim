@@ -159,7 +159,7 @@ void update_generator_warning(char *buff)
     return;
   }
   
-  if ( val == 1 )
+  if ( val > 0 )
   {
     digitalWrite(generatorWarningPin,HIGH);
   } //if
@@ -182,7 +182,7 @@ void update_fuel_pressure_warning(char *buff)
     return;
   }
   
-  if ( val == 1 )
+  if ( val > 0 )
   {
     digitalWrite(fuelPressureWarningPin,HIGH);
   } //if

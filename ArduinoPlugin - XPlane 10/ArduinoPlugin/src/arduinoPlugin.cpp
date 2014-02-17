@@ -6,8 +6,8 @@ XmlConfig *configFile;
 float MAX_PROP_SPEED_RADS = 2550;
 float MIN_PROP_SPEED_RADS = 0;
 float PROP_SPEED_RANGE_RADS = 0;
-float MAX_TRIM_DEFLECTION = 0.5f;
-float MIN_TRIM_DEFLECTION = -0.5f;
+float MAX_TRIM_DEFLECTION = 1.0f;
+float MIN_TRIM_DEFLECTION = -1.0f;
 const float MAX_AIRSPEED = 120.0f;
 int _iLoopCalls = 0;
 
@@ -627,9 +627,9 @@ void update_switches()
 	}//if
 
 	//Trim Up Button pressed (holding button does not cause continuous increase)
-	if (currentState.trimSwitchPos == 1 && lastState.trimSwitchPos == 0)
+	if (currentState.trimSwitchPos == 1)
 	{
-		update_trim_position(0.1f);
+		update_trim_position(0.025f);
 		lastState.trimSwitchPos = 1;
 	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 1)
 	{
@@ -637,9 +637,9 @@ void update_switches()
 	}//if
 
 	//Trim Dn Button pressed (holding button does not cause continuous decrease)
-	if (currentState.trimSwitchPos == 2 && lastState.trimSwitchPos == 0)
+	if (currentState.trimSwitchPos == 2)
 	{
-		update_trim_position(-0.1f);
+		update_trim_position(-0.025f);
 		lastState.trimSwitchPos = 2;
 	} else if (currentState.trimSwitchPos == 0 && lastState.trimSwitchPos == 2)
 	{
@@ -911,11 +911,11 @@ void update_flaps_display()
 	//No Flaps when ratio less than f_flapsDisplayTolerance
 	if (f_flapsRatio <= f_flapsDisplayTolerance)
 	{
-		_arduino->SendState(FLAPS_DISPLAY,15);
+		_arduino->SendState(FLAPS_DISPLAY,17);
 	} 
 	else if (f_flapsRatio <= TAKEOFF_FLAPS_RATIO - 2 * f_flapsDisplayTolerance) //Transition until TAKEOFF_FLAPS_RATIO - f_flapsDisplayTolerance
 	{
-		_arduino->SendState(FLAPS_DISPLAY,18);
+		_arduino->SendState(FLAPS_DISPLAY,22);
 	}
 	else if (f_flapsRatio <= TAKEOFF_FLAPS_RATIO + f_flapsDisplayTolerance) //Takeoff flaps
 	{
@@ -959,8 +959,8 @@ void update_trim_display()
 		return;
 	}
 
-	//Want value 0 - 63 (Trim has max VDC ~ 1.25 VDC)
-	trimValue = (int) (63 * (-_trimPosition - MIN_TRIM_DEFLECTION) / (MAX_TRIM_DEFLECTION-MIN_TRIM_DEFLECTION));
+	//Want value 5 - 70 (Trim has max VDC ~ 1.25 VDC)
+	trimValue = (int) (65 * (-_trimPosition - MIN_TRIM_DEFLECTION) / (MAX_TRIM_DEFLECTION-MIN_TRIM_DEFLECTION) + 5);
 
 	_arduino->SendState(TRIM_DISPLAY,trimValue);
 }

@@ -47,8 +47,8 @@ void update_stall_warning(char *buff);
 void update_generator_warning(char *buff);
 void update_fuel_pressure_warning(char *buff);
 
-#include "D:\Arduino Program\ArduPilot-Arduino-1.0.3-windows\ArduPilot-Arduino-1.0.3-windows\hardware\arduino\variants\mega\pins_arduino.h" 
-#include "D:\Arduino Program\ArduPilot-Arduino-1.0.3-windows\ArduPilot-Arduino-1.0.3-windows\hardware\arduino\cores\arduino\arduino.h"
+#include "D:\Arduino Program\Clean Config ArduPilot\ArduPilot-Arduino-1.0.3-windows\hardware\arduino\variants\mega\pins_arduino.h" 
+#include "D:\Arduino Program\Clean Config ArduPilot\ArduPilot-Arduino-1.0.3-windows\hardware\arduino\cores\arduino\arduino.h"
 #include "D:\Code\KatanaSim\KatanaSim\ArduinoCode\ArduinoCode.ino"
 #include "D:\Code\KatanaSim\KatanaSim\ArduinoCode\Circuit_Breakers.ino"
 #include "D:\Code\KatanaSim\KatanaSim\ArduinoCode\HelperFunctions.ino"
