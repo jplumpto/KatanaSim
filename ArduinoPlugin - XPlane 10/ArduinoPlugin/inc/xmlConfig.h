@@ -20,6 +20,7 @@ public:
 	void Open(const char *filename);         // Opens the specified Config file and returns the parameters
 
 	char ArduinoPort[100];
+	int Baudrate;
 	int Delay;
 	int CommFlush;
 	int ThrottleMin;

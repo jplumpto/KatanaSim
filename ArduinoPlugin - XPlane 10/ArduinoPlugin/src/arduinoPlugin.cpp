@@ -219,7 +219,7 @@ PLUGIN_API int XPluginEnable(void)
 	configFile = new XmlConfig();
 	configFile->Open(filename);
 
-	_arduino = new ArduinoCom(configFile->ArduinoPort,9600);
+	_arduino = new ArduinoCom(configFile->ArduinoPort,configFile->Baudrate);
 	if(!_arduino->IsOpen())
 	{
 		return -1;
@@ -468,7 +468,20 @@ void update_controls()
 	roll = invert_control(roll,0,configFile->RollInvert);
 	yaw = invert_control(yaw,0,configFile->YawInvert);
 	lBrake = invert_control(lBrake,1,configFile->LeftBrakeInvert);
+	
+	if ( lBrake < 0.05f )
+	{
+		lBrake = 0.0f;
+	}
+	
 	rBrake = invert_control(rBrake,1,configFile->RightBrakeInvert);
+
+	if ( rBrake < 0.05f )
+	{
+		rBrake = 0.0f;
+	}
+
+
 	carbHeat = invert_control(carbHeat,1,configFile->CarbHeatInvert);
 	
 	if ( carbHeat < 0.10f )

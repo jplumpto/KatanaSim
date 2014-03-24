@@ -4,6 +4,7 @@
 XmlConfig::XmlConfig()
 {
 	strcpy(ArduinoPort , "COM1");
+	Baudrate = 9600;
 	Delay = 0;
 	CommFlush = 1;
 	ThrottleMin = 0;
@@ -76,6 +77,11 @@ void XmlConfig::Open(const char *filename)
 			entry = strtok(NULL,"<>");
 			strcpy(ArduinoPort,entry);
 		} 
+		else if (strcmp(entry,"Baudrate") == 0)
+		{
+			entry = strtok(NULL,"<>");
+			sscanf(entry,"%d",&Baudrate);
+		}
 		else if (strcmp(entry,"Delay") == 0)
 		{
 			entry = strtok(NULL,"<>");
